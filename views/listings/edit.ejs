@@ -1,0 +1,428 @@
+<% layout("/layouts/boilerplate") %>
+
+<div class="new-listing-container">
+
+    <h2 class="form-heading">
+        Edit your Listing
+    </h2>
+
+    <form
+        method="POST"
+        action="/listings/<%= listing._id %>?_method=PUT"
+        class="listing-form"
+        id="editForm"
+        enctype="multipart/form-data"
+    >
+
+        <div class="form-group">
+            <label>Title</label>
+
+            <input
+                type="text"
+                name="listing[title]"
+                value="<%= listing.title %>"
+                required
+            >
+
+            <span class="error-msg"></span>
+        </div>
+
+
+        <div class="form-group">
+            <label>Description</label>
+
+            <textarea
+                name="listing[description]"
+                required
+            ><%= listing.description %></textarea>
+
+            <span class="error-msg"></span>
+        </div>
+
+
+        <!-- ================================= -->
+        <!-- IMAGE UPLOAD -->
+        <!-- ================================= -->
+
+        <div class="form-group">
+
+            <label>Upload Images</label>
+
+            <input
+                type="file"
+                name="listingImages"
+                id="listingImages"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                multiple
+            >
+
+            <small style="margin-top: 6px; color: #666;">
+                Select 1 to 16 images. JPG, JPEG, PNG, WEBP, GIF or AVIF.
+                Leave empty to keep the existing images.
+            </small>
+
+            <span
+                id="imageError"
+                class="error-msg"
+            ></span>
+
+        </div>
+
+
+        <!-- ================================= -->
+        <!-- IMAGE PREVIEW -->
+        <!-- ================================= -->
+
+        <div
+            id="imagePreview"
+            style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 20px;
+            "
+        >
+
+            <% if (listing.images && listing.images.length > 0) { %>
+
+                <% listing.images.forEach(function(image) { %>
+
+                    <div
+                        style="
+                            width: 100px;
+                            height: 80px;
+                            border-radius: 8px;
+                            overflow: hidden;
+                            border: 1px solid #ddd;
+                        "
+                    >
+                        <img
+                            src="<%= image %>"
+                            alt="Existing listing image"
+                            style="
+                                width: 100%;
+                                height: 100%;
+                                object-fit: cover;
+                            "
+                        >
+                    </div>
+
+                <% }) %>
+
+            <% } else if (listing.image && listing.image.url) { %>
+
+                <div
+                    style="
+                        width: 100px;
+                        height: 80px;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        border: 1px solid #ddd;
+                    "
+                >
+                    <img
+                        src="<%= listing.image.url %>"
+                        alt="Existing listing image"
+                        style="
+                            width: 100%;
+                            height: 100%;
+                            object-fit: cover;
+                        "
+                    >
+                </div>
+
+            <% } %>
+
+        </div>
+
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>Price</label>
+
+                <input
+                    type="number"
+                    name="listing[price]"
+                    value="<%= listing.price %>"
+                    required
+                >
+
+                <span class="error-msg"></span>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>Country</label>
+
+                <input
+                    type="text"
+                    name="listing[country]"
+                    value="<%= listing.country %>"
+                    required
+                >
+
+                <span class="error-msg"></span>
+
+            </div>
+
+        </div>
+
+
+        <div class="form-group">
+
+            <label>Location</label>
+
+            <input
+                type="text"
+                name="listing[location]"
+                value="<%= listing.location %>"
+                required
+            >
+
+            <span class="error-msg"></span>
+
+        </div>
+
+
+        <button
+            type="submit"
+            class="submit-btn"
+        >
+            Edit
+        </button>
+
+    </form>
+
+</div>
+
+
+<script>
+
+    /* ==========================================
+       EDIT FORM VALIDATION
+    ========================================== */
+
+    document
+        .getElementById("editForm")
+        .addEventListener("submit", function(e) {
+
+            let isValid = true;
+
+            document
+                .querySelectorAll(".form-group")
+                .forEach(group => {
+
+                    const input =
+                        group.querySelector(
+                            "input:not([type='file']), textarea"
+                        );
+
+                    const errorMsg =
+                        group.querySelector(".error-msg");
+
+                    if (
+                        input &&
+                        !input.value.trim()
+                    ) {
+
+                        errorMsg.innerText =
+                            "This field is required";
+
+                        input.style.border =
+                            "2px solid red";
+
+                        isValid = false;
+
+                    } else if (input) {
+
+                        errorMsg.innerText = "";
+
+                        input.style.border =
+                            "1px solid #ccc";
+                    }
+
+
+                    /* Price validation */
+
+                    if (
+                        input &&
+                        input.name === "listing[price]" &&
+                        input.value < 0
+                    ) {
+
+                        errorMsg.innerText =
+                            "Price cannot be negative";
+
+                        input.style.border =
+                            "2px solid red";
+
+                        isValid = false;
+                    }
+
+                });
+
+
+            /* ==========================================
+               IMAGE VALIDATION
+            ========================================== */
+
+            const imageInput =
+                document.getElementById("listingImages");
+
+            const imageError =
+                document.getElementById("imageError");
+
+            imageError.innerText = "";
+
+            const files =
+                imageInput.files;
+
+
+            /* Maximum 16 images */
+
+            if (files.length > 16) {
+
+                imageError.innerText =
+                    "You can upload maximum 16 images.";
+
+                isValid = false;
+            }
+
+
+            /* Check file types */
+
+            const allowedTypes = [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/gif",
+                "image/avif"
+            ];
+
+
+            for (let i = 0; i < files.length; i++) {
+
+                if (!allowedTypes.includes(files[i].type)) {
+
+                    imageError.innerText =
+                        "Only JPG, JPEG, PNG, WEBP, GIF or AVIF images are allowed.";
+
+                    isValid = false;
+
+                    break;
+                }
+            }
+
+
+            if (!isValid) {
+
+                e.preventDefault();
+            }
+
+        });
+
+
+    /* ==========================================
+       IMAGE PREVIEW
+    ========================================== */
+
+    document
+        .getElementById("listingImages")
+        .addEventListener("change", function() {
+
+            const preview =
+                document.getElementById("imagePreview");
+
+            const imageError =
+                document.getElementById("imageError");
+
+            preview.innerHTML = "";
+
+            imageError.innerText = "";
+
+            const files = this.files;
+
+
+            if (files.length === 0) {
+                return;
+            }
+
+
+            if (files.length > 16) {
+
+                imageError.innerText =
+                    "You can upload maximum 16 images.";
+
+                this.value = "";
+
+                return;
+            }
+
+
+            const allowedTypes = [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/gif",
+                "image/avif"
+            ];
+
+
+            for (let i = 0; i < files.length; i++) {
+
+                if (!allowedTypes.includes(files[i].type)) {
+
+                    imageError.innerText =
+                        "Only JPG, JPEG, PNG, WEBP, GIF or AVIF images are allowed.";
+
+                    this.value = "";
+
+                    preview.innerHTML = "";
+
+                    return;
+                }
+
+
+                const reader =
+                    new FileReader();
+
+
+                reader.onload = function(event) {
+
+                    const wrapper =
+                        document.createElement("div");
+
+                    wrapper.style.width = "100px";
+                    wrapper.style.height = "80px";
+                    wrapper.style.borderRadius = "8px";
+                    wrapper.style.overflow = "hidden";
+                    wrapper.style.border = "1px solid #ddd";
+
+
+                    const img =
+                        document.createElement("img");
+
+                    img.src =
+                        event.target.result;
+
+                    img.style.width = "100%";
+                    img.style.height = "100%";
+                    img.style.objectFit = "cover";
+
+
+                    wrapper.appendChild(img);
+
+                    preview.appendChild(wrapper);
+                };
+
+
+                reader.readAsDataURL(files[i]);
+            }
+
+        });
+
+</script>

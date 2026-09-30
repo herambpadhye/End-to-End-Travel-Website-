@@ -1,0 +1,108 @@
+<% layout("/layouts/boilerplate") %>
+
+<div class="auth-container">
+
+    <h2 class="auth-heading">Login</h2>
+
+    <div class="auth-card">
+
+        <% if (typeof error !== "undefined") { %>
+
+            <div class="auth-error">
+                <%= error %>
+            </div>
+
+        <% } %>
+
+
+        <form method="POST" action="/users/login">
+
+
+            <div class="form-group">
+
+                <label for="email">
+                    Gmail ID
+                </label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="example@gmail.com"
+                    required
+                    pattern="[a-zA-Z0-9._%+-]+@gmail\.com"
+                    title="Please enter a valid Gmail ID ending with @gmail.com"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="password">
+                    Password
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required
+                >
+
+            </div>
+
+
+            <!-- Host Login -->
+
+            <div class="host-login-option">
+
+                <input
+                    type="checkbox"
+                    id="isHost"
+                    name="isHost"
+                >
+
+                <label for="isHost">
+                    Are you a host?
+                </label>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="submit-btn auth-submit-btn"
+            >
+                Login
+            </button>
+
+
+        </form>
+
+
+        <p class="auth-bottom-text">
+
+            Don't have an account?
+
+            <a href="/users/signup">
+                Sign Up
+            </a>
+
+        </p>
+
+
+        <p class="auth-bottom-text">
+
+            Want to become a host?
+
+            <a href="/users/host">
+                Become a Host
+            </a>
+
+        </p>
+
+    </div>
+
+</div>

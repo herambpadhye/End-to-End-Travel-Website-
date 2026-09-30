@@ -1,0 +1,80 @@
+<% layout("/layouts/boilerplate") %>
+
+<div class="auth-container">
+
+    <h2 class="auth-heading">Sign Up</h2>
+
+    <div class="auth-card">
+
+        <% if (typeof error !== "undefined") { %>
+
+            <div class="auth-error">
+                <%= error %>
+            </div>
+
+        <% } %>
+
+
+        <form method="POST" action="/users/signup">
+
+
+            <div class="form-group">
+
+                <label for="email">
+                    Gmail ID
+                </label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="example@gmail.com"
+                    required
+                    pattern="[a-zA-Z0-9._%+-]+@gmail\.com"
+                    title="Please enter a valid Gmail ID ending with @gmail.com"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="password">
+                    Set Password
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="submit-btn auth-submit-btn"
+            >
+                Sign Up
+            </button>
+
+
+        </form>
+
+
+        <p class="auth-bottom-text">
+
+            Already have an account?
+
+            <a href="/users/login">
+                Login
+            </a>
+
+        </p>
+
+    </div>
+
+</div>

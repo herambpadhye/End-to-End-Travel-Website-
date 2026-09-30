@@ -1,0 +1,403 @@
+<% layout("/layouts/boilerplate") %>
+
+<div class="new-listing-container">
+
+    <h2 class="form-heading">
+        Create a New Listing
+    </h2>
+
+    <form
+        method="POST"
+        action="/listings"
+        class="listing-form"
+        id="newForm"
+        enctype="multipart/form-data"
+    >
+
+        <!-- TITLE -->
+
+        <div class="form-group">
+
+            <label>Title</label>
+
+            <input
+                name="listing[title]"
+                placeholder="Add a catchy title"
+                type="text"
+                required
+            />
+
+            <span class="error-msg"></span>
+
+        </div>
+
+
+        <!-- DESCRIPTION -->
+
+        <div class="form-group">
+
+            <label>Description</label>
+
+            <textarea
+                name="listing[description]"
+                required
+            ></textarea>
+
+            <span class="error-msg"></span>
+
+        </div>
+
+
+        <!-- ============================= -->
+        <!-- MULTIPLE IMAGE UPLOAD -->
+        <!-- ============================= -->
+
+        <div class="form-group">
+
+            <label>Images</label>
+
+            <div class="image-upload-box">
+
+                <input
+                    type="file"
+                    id="listingImages"
+                    name="listingImages"
+                    accept="image/*"
+                    multiple
+                    hidden
+                />
+
+                <button
+                    type="button"
+                    class="upload-image-btn"
+                    id="uploadImagesBtn"
+                >
+                    Upload Images
+                </button>
+
+                <span class="upload-image-info">
+                    You can select up to 16 images
+                </span>
+
+            </div>
+
+            <div
+                id="imagePreview"
+                class="image-preview-container"
+            ></div>
+
+            <span
+                id="imageError"
+                class="error-msg"
+            ></span>
+
+        </div>
+
+
+        <!-- PRICE + COUNTRY -->
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>Price</label>
+
+                <input
+                    name="listing[price]"
+                    type="number"
+                    required
+                />
+
+                <span class="error-msg"></span>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>Country</label>
+
+                <input
+                    name="listing[country]"
+                    type="text"
+                    required
+                />
+
+                <span class="error-msg"></span>
+
+            </div>
+
+        </div>
+
+
+        <!-- LOCATION -->
+
+        <div class="form-group">
+
+            <label>Location</label>
+
+            <input
+                name="listing[location]"
+                type="text"
+                required
+            />
+
+            <span class="error-msg"></span>
+
+        </div>
+
+
+        <!-- SUBMIT -->
+
+        <button
+            type="submit"
+            class="submit-btn"
+        >
+            Add
+        </button>
+
+    </form>
+
+</div>
+
+
+<script>
+
+    // =====================================================
+    // IMAGE UPLOAD
+    // =====================================================
+
+    const imageInput =
+        document.getElementById("listingImages");
+
+    const uploadImagesBtn =
+        document.getElementById("uploadImagesBtn");
+
+    const imagePreview =
+        document.getElementById("imagePreview");
+
+    const imageError =
+        document.getElementById("imageError");
+
+
+    // Open file picker
+    uploadImagesBtn.addEventListener(
+        "click",
+        function () {
+
+            imageInput.click();
+
+        }
+    );
+
+
+    // =====================================================
+    // SHOW SELECTED IMAGE PREVIEWS
+    // =====================================================
+
+    imageInput.addEventListener(
+        "change",
+        function () {
+
+            imagePreview.innerHTML = "";
+
+            imageError.innerText = "";
+
+            const files = Array.from(
+                imageInput.files
+            );
+
+
+            // Maximum 16 images
+            if (files.length > 16) {
+
+                imageError.innerText =
+                    "You can select a maximum of 16 images.";
+
+                imageInput.value = "";
+
+                return;
+
+            }
+
+
+            // Check image files
+            for (const file of files) {
+
+                if (!file.type.startsWith("image/")) {
+
+                    imageError.innerText =
+                        "Please select only image files.";
+
+                    imageInput.value = "";
+
+                    imagePreview.innerHTML = "";
+
+                    return;
+
+                }
+
+            }
+
+
+            // Create previews
+            files.forEach(
+                function (file) {
+
+                    const reader =
+                        new FileReader();
+
+                    reader.onload =
+                        function (event) {
+
+                            const previewWrapper =
+                                document.createElement("div");
+
+                            previewWrapper.className =
+                                "image-preview-item";
+
+
+                            const image =
+                                document.createElement("img");
+
+                            image.src =
+                                event.target.result;
+
+                            image.alt =
+                                "Selected image";
+
+
+                            previewWrapper.appendChild(
+                                image
+                            );
+
+
+                            imagePreview.appendChild(
+                                previewWrapper
+                            );
+
+                        };
+
+
+                    reader.readAsDataURL(file);
+
+                }
+            );
+
+        }
+    );
+
+
+    // =====================================================
+    // FORM VALIDATION
+    // =====================================================
+
+    document
+        .getElementById("newForm")
+        .addEventListener(
+            "submit",
+            function (e) {
+
+                let isValid = true;
+
+
+                // Validate normal form fields
+                document
+                    .querySelectorAll(".form-group")
+                    .forEach(
+                        function (group) {
+
+                            const input =
+                                group.querySelector(
+                                    "input:not([type='file']), textarea"
+                                );
+
+                            const errorMsg =
+                                group.querySelector(
+                                    ".error-msg"
+                                );
+
+
+                            if (
+                                input &&
+                                !input.value.trim()
+                            ) {
+
+                                errorMsg.innerText =
+                                    "This field is required";
+
+                                input.style.border =
+                                    "2px solid red";
+
+                                isValid = false;
+
+                            } else if (input) {
+
+                                errorMsg.innerText = "";
+
+                                input.style.border =
+                                    "1px solid #ccc";
+
+                            }
+
+
+                            // Price validation
+                            if (
+                                input &&
+                                input.name ===
+                                "listing[price]" &&
+                                input.value < 0
+                            ) {
+
+                                errorMsg.innerText =
+                                    "Price cannot be negative";
+
+                                input.style.border =
+                                    "2px solid red";
+
+                                isValid = false;
+
+                            }
+
+                        }
+                    );
+
+
+                // =================================================
+                // IMAGE VALIDATION
+                // =================================================
+
+                const files =
+                    imageInput.files;
+
+
+                if (!files || files.length === 0) {
+
+                    imageError.innerText =
+                        "Please upload at least one image.";
+
+                    isValid = false;
+
+                }
+
+
+                if (files.length > 16) {
+
+                    imageError.innerText =
+                        "You can select a maximum of 16 images.";
+
+                    isValid = false;
+
+                }
+
+
+                if (!isValid) {
+
+                    e.preventDefault();
+
+                }
+
+            }
+        );
+
+</script>

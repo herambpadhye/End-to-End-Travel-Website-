@@ -1,0 +1,1205 @@
+<% layout("/layouts/boilerplate") %>
+
+<style>
+    .dashboard-shell {
+        display: flex;
+        align-items: stretch;
+        width: 100%;
+        min-height: 650px;
+        gap: 20px;
+        position: relative;
+        margin-top: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .dashboard-sidebar {
+        width: 240px;
+        min-width: 240px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(34, 34, 34, 0.08);
+        border-radius: 18px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+        padding: 18px 14px;
+        transition: transform 0.35s ease, opacity 0.25s ease, width 0.35s ease, min-width 0.35s ease;
+        position: relative;
+        z-index: 2;
+    }
+
+    .dashboard-sidebar.collapsed {
+        width: 0;
+        min-width: 0;
+        padding: 0;
+        border: none;
+        overflow: hidden;
+        transform: translateX(-110%);
+        opacity: 0;
+    }
+
+    .dashboard-sidebar.collapsed .sidebar-nav {
+        opacity: 0;
+    }
+
+    .sidebar-toggle {
+        position: absolute;
+        top: 18px;
+        right: -14px;
+        width: 30px;
+        height: 30px;
+        border: none;
+        border-radius: 50%;
+        background: #ff385c;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 8px 18px rgba(255, 56, 92, 0.35);
+        transition: all 0.25s ease;
+        z-index: 3;
+    }
+
+    .sidebar-toggle:hover {
+        transform: scale(1.04);
+    }
+
+    .sidebar-toggle-right {
+        display: none;
+        right: auto;
+        left: 0;
+        top: 18px;
+    }
+
+    .sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 16px;
+        transition: opacity 0.25s ease;
+    }
+
+    .sidebar-item {
+        display: block;
+        width: 100%;
+        border: none;
+        background: transparent;
+        text-align: left;
+        text-decoration: none;
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #3a3a3a;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .sidebar-item:hover {
+        background: rgba(255, 56, 92, 0.08);
+        color: #ff385c;
+    }
+
+    .sidebar-item.active {
+        background: rgba(255, 56, 92, 0.12);
+        color: #ff385c;
+    }
+
+    .dashboard-main {
+        flex: 1;
+        min-width: 0;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(34, 34, 34, 0.08);
+        border-radius: 18px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+        padding: 22px 24px 26px;
+        transition: all 0.35s ease;
+    }
+
+    .dashboard-shell.collapsed-layout .dashboard-main {
+        flex: 1 1 auto;
+    }
+
+    .dashboard-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        margin-bottom: 22px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(34, 34, 34, 0.12);
+        background: #fff;
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #222;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .dashboard-action:hover {
+        border-color: rgba(255, 56, 92, 0.45);
+        color: #ff385c;
+    }
+
+    .dashboard-panel {
+        display: none;
+        animation: fade-in 0.2s ease;
+    }
+
+    .dashboard-panel.active {
+        display: block;
+    }
+
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 18px;
+        align-items: end;
+        flex-wrap: wrap;
+        margin-bottom: 26px;
+    }
+
+    .filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 200px;
+    }
+
+    .filter-field label {
+        font-size: 13px;
+        color: #555;
+        font-weight: 600;
+    }
+
+    .select-wrap,
+    .date-field {
+        position: relative;
+        display: flex;
+        align-items: center;
+        background: #fff;
+        border: 1px solid rgba(34, 34, 34, 0.12);
+        border-radius: 10px;
+        height: 42px;
+        overflow: hidden;
+    }
+
+    .select-wrap select,
+    .date-field input {
+        width: 100%;
+        border: none;
+        background: transparent;
+        height: 100%;
+        font-size: 14px;
+        color: #222;
+        padding: 0 14px;
+        outline: none;
+    }
+
+    .date-field {
+        min-width: 200px;
+    }
+
+    .date-field i {
+        position: absolute;
+        left: 12px;
+        color: #666;
+        font-size: 15px;
+        pointer-events: none;
+    }
+
+    .date-field input {
+        padding-left: 38px;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(170px, 1fr));
+        gap: 18px;
+        margin-bottom: 26px;
+    }
+
+    .summary-card {
+        background: #fff;
+        border: 1px solid rgba(34, 34, 34, 0.08);
+        border-radius: 16px;
+        padding: 20px 18px;
+        min-height: 110px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.03);
+    }
+
+    .summary-card h4 {
+        margin: 0 0 14px;
+        font-size: 14px;
+        color: #555;
+        font-weight: 600;
+    }
+
+    .summary-card .summary-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #222;
+        margin: 0;
+    }
+
+    .chart-card {
+        background: #fff;
+        border: 1px solid rgba(34, 34, 34, 0.08);
+        border-radius: 16px;
+        padding: 18px 18px 14px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.03);
+    }
+
+    .chart-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .chart-card-header h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #222;
+    }
+
+    .chart-card-header span {
+        color: #777;
+        font-size: 12px;
+    }
+
+    .chart-placeholder {
+        height: 260px;
+        border-radius: 12px;
+        border: 1px dashed rgba(34, 34, 34, 0.15);
+        background: linear-gradient(to top, rgba(255, 56, 92, 0.04), rgba(255, 255, 255, 0.9));
+        position: relative;
+        overflow: hidden;
+    }
+
+    .chart-placeholder::before {
+        content: "";
+        position: absolute;
+        inset: 18px 18px 18px 18px;
+        border-radius: 10px;
+        background:
+            linear-gradient(to top, rgba(255, 56, 92, 0.12), rgba(255, 56, 92, 0.03));
+        clip-path: polygon(0% 85%, 12% 72%, 24% 80%, 37% 68%, 50% 74%, 62% 58%, 74% 63%, 87% 45%, 100% 36%, 100% 100%, 0% 100%);
+    }
+
+    .chart-placeholder::after {
+        content: "";
+        position: absolute;
+        left: 18px;
+        right: 18px;
+        bottom: 18px;
+        height: 1px;
+        background: rgba(34, 34, 34, 0.12);
+    }
+
+    .placeholder-panel {
+        background: #fff;
+        border: 1px solid rgba(34, 34, 34, 0.08);
+        border-radius: 16px;
+        padding: 30px 20px;
+        text-align: center;
+        color: #555;
+        min-height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.03);
+    }
+
+    .services-heading {
+        margin: 0 0 22px;
+        font-size: 24px;
+        color: #222;
+    }
+
+    .services-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
+        gap: 26px;
+        align-items: start;
+    }
+
+    .services-content {
+        min-width: 0;
+    }
+
+    .services-visual {
+        width: 100%;
+        height: 100%;
+        min-height: 430px;
+        object-fit: cover;
+        border-radius: 16px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .services-listing-field {
+        max-width: 460px;
+        margin-bottom: 28px;
+    }
+
+    .services-listing-field label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: #555;
+        font-weight: 600;
+    }
+
+    .services-listing-field select {
+        width: 100%;
+        height: 44px;
+        padding: 0 14px;
+        border: 1px solid rgba(34, 34, 34, 0.12);
+        border-radius: 10px;
+        background: #fff;
+        color: #222;
+        font-size: 14px;
+        outline: none;
+    }
+
+    .services-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .service-card {
+        min-height: 150px;
+        padding: 20px 18px;
+        background: #fff;
+        border: 1px solid rgba(34, 34, 34, 0.08);
+        border-radius: 16px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.03);
+    }
+
+    .service-card i {
+        margin-bottom: 16px;
+        color: #ff385c;
+        font-size: 22px;
+    }
+
+    .service-card h4 {
+        margin: 0;
+        color: #222;
+        font-size: 15px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 980px) {
+        .services-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .services-visual {
+            min-height: 280px;
+            max-height: 420px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .services-visual {
+            min-height: 220px;
+        }
+    }
+
+    .dashboard-shell.dark-mode {
+        --dashboard-bg: #1c1c1e;
+        --dashboard-surface: #232326;
+        --dashboard-surface-soft: #2a2a2d;
+        --dashboard-border: rgba(255, 255, 255, 0.08);
+        --dashboard-text: #f5f5f5;
+        --dashboard-muted: #c4c4c8;
+        --dashboard-card: #1f1f22;
+        --dashboard-input: #2b2b2f;
+        --dashboard-shadow: rgba(0, 0, 0, 0.4);
+    }
+
+    .dashboard-shell.dark-mode .dashboard-sidebar,
+    .dashboard-shell.dark-mode .dashboard-main,
+    .dashboard-shell.dark-mode .summary-card,
+    .dashboard-shell.dark-mode .chart-card,
+    .dashboard-shell.dark-mode .placeholder-panel,
+    .dashboard-shell.dark-mode .dashboard-action,
+    .dashboard-shell.dark-mode .select-wrap,
+    .dashboard-shell.dark-mode .date-field {
+        background: var(--dashboard-surface);
+        border-color: var(--dashboard-border);
+        box-shadow: 0 10px 25px var(--dashboard-shadow);
+    }
+
+    .dashboard-shell.dark-mode .services-heading,
+    .dashboard-shell.dark-mode .service-card h4,
+    .dashboard-shell.dark-mode .services-listing-field select {
+        color: var(--dashboard-text);
+    }
+
+    .dashboard-shell.dark-mode .service-card,
+    .dashboard-shell.dark-mode .services-listing-field select {
+        background: var(--dashboard-surface);
+        border-color: var(--dashboard-border);
+        box-shadow: 0 10px 25px var(--dashboard-shadow);
+    }
+
+    .dashboard-shell.dark-mode .services-listing-field label {
+        color: var(--dashboard-muted);
+    }
+
+    .dashboard-shell.dark-mode .sidebar-item,
+    .dashboard-shell.dark-mode .dashboard-action,
+    .dashboard-shell.dark-mode .summary-card h4,
+    .dashboard-shell.dark-mode .summary-card .summary-value,
+    .dashboard-shell.dark-mode .chart-card-header h3,
+    .dashboard-shell.dark-mode .filter-field label,
+    .dashboard-shell.dark-mode .placeholder-panel,
+    .dashboard-shell.dark-mode .select-wrap select,
+    .dashboard-shell.dark-mode .date-field input,
+    .dashboard-shell.dark-mode .chart-card-header span {
+        color: var(--dashboard-text);
+    }
+
+    .dashboard-shell.dark-mode .summary-card h4,
+    .dashboard-shell.dark-mode .filter-field label,
+    .dashboard-shell.dark-mode .chart-card-header span,
+    .dashboard-shell.dark-mode .placeholder-panel {
+        color: var(--dashboard-muted);
+    }
+
+    .dashboard-shell.dark-mode .select-wrap select,
+    .dashboard-shell.dark-mode .date-field input,
+    .dashboard-shell.dark-mode .dashboard-action,
+    .dashboard-shell.dark-mode .sidebar-item {
+        background: var(--dashboard-input);
+    }
+
+    .dashboard-shell.dark-mode .chart-placeholder {
+        background: linear-gradient(to top, rgba(255, 56, 92, 0.12), rgba(255, 255, 255, 0.04));
+    }
+
+    @media (max-width: 980px) {
+        .dashboard-shell {
+            flex-direction: column;
+        }
+
+        .dashboard-sidebar {
+            width: 100%;
+            min-width: 100%;
+        }
+
+        .dashboard-sidebar.collapsed {
+            width: 100%;
+            min-width: 100%;
+            padding: 0;
+            transform: translateX(0);
+        }
+
+        .sidebar-toggle {
+            display: none;
+        }
+
+        .sidebar-toggle-right {
+            display: none;
+        }
+
+        .summary-grid {
+            grid-template-columns: repeat(2, minmax(170px, 1fr));
+        }
+
+        .services-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 640px) {
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .services-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-main {
+            padding: 16px;
+        }
+
+        .dashboard-topbar {
+            justify-content: flex-start;
+        }
+
+        .filter-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-field {
+            width: 100%;
+            min-width: 100%;
+        }
+    }
+</style>
+
+<div class="dashboard-shell" id="dashboardShell">
+
+    <aside class="dashboard-sidebar" id="dashboardSidebar">
+        <button
+            class="sidebar-toggle"
+            id="collapseSidebarBtn"
+            type="button"
+            aria-label="Collapse sidebar"
+        >
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <nav class="sidebar-nav" aria-label="Dashboard menu">
+            <button class="sidebar-item active" type="button" data-section="overview">
+                Overview
+            </button>
+            <button class="sidebar-item" type="button" data-section="booking-info">
+                Booking info
+            </button>
+            <button class="sidebar-item" type="button" data-section="booking-trends">
+                Booking Trends
+            </button>
+            <button class="sidebar-item" type="button" data-section="services-needed">
+                Services u need
+            </button>
+        </nav>
+    </aside>
+
+    <button
+        class="sidebar-toggle sidebar-toggle-right"
+        id="expandSidebarBtn"
+        type="button"
+        aria-label="Expand sidebar"
+    >
+        <i class="fa-solid fa-arrow-right"></i>
+    </button>
+
+    <main class="dashboard-main">
+
+        <header class="dashboard-topbar">
+            <button class="dashboard-action" type="button" id="uploadExcelBtn">
+                <i class="fa-solid fa-upload"></i>
+                Upload Excel
+            </button>
+
+            <button class="dashboard-action" type="button" id="exportCsvBtn">
+                <i class="fa-solid fa-file-export"></i>
+                Export CSV
+            </button>
+
+            <button class="dashboard-action" type="button" id="fullscreenBtn">
+                <i class="fa-solid fa-expand"></i>
+                Full-screen
+            </button>
+
+            <button class="dashboard-action" type="button" id="darkModeToggle">
+                <i class="fa-solid fa-moon"></i>
+                Dark mode
+            </button>
+        </header>
+
+        <section class="dashboard-panel active" data-panel="overview">
+            <div class="filter-row">
+                <div class="filter-field">
+                    <label for="locationFilter">Location</label>
+                    <div class="select-wrap">
+                        <select id="locationFilter" name="location">
+                            <option value="">All locations</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-field">
+                    <label for="dateFromFilter">From</label>
+                    <div class="date-field">
+                        <i class="fa-regular fa-calendar"></i>
+                        <input id="dateFromFilter" type="date" name="dateFrom" />
+                    </div>
+                </div>
+
+                <div class="filter-field">
+                    <label for="dateToFilter">To</label>
+                    <div class="date-field">
+                        <i class="fa-regular fa-calendar"></i>
+                        <input id="dateToFilter" type="date" name="dateTo" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="summary-grid">
+                <article class="summary-card">
+                    <h4>Total Bookings</h4>
+                    <p class="summary-value">0</p>
+                </article>
+
+                <article class="summary-card">
+                    <h4>Total Revenue</h4>
+                    <p class="summary-value">0</p>
+                </article>
+
+                <article class="summary-card">
+                    <h4>Average Rate</h4>
+                    <p class="summary-value">0</p>
+                </article>
+
+                <article class="summary-card">
+                    <h4>Average Guest Rating</h4>
+                    <p class="summary-value">0</p>
+                </article>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <h3>Revenue by Property</h3>
+                    <span>Upcoming</span>
+                </div>
+
+                <div class="chart-placeholder" aria-label="Placeholder chart area"></div>
+            </div>
+        </section>
+
+        <section class="dashboard-panel" data-panel="booking-info">
+            <div class="placeholder-panel">
+                Booking info
+            </div>
+        </section>
+
+        <section class="dashboard-panel" data-panel="booking-trends">
+            <div class="placeholder-panel">
+                Booking Trends
+            </div>
+        </section>
+
+        <section class="dashboard-panel" data-panel="services-needed">
+            <div class="services-layout">
+                <div class="services-content">
+                    <h2 class="services-heading">Services You Might Need</h2>
+
+                    <div class="services-listing-field">
+                        <label for="servicesListing">Select your listing</label>
+                        <select id="servicesListing" name="listing">
+                            <option value="">Select a listing</option>
+                            <% (typeof listings !== "undefined" ? listings : []).forEach((listing) => { %>
+                                <option value="<%= listing._id %>"><%= listing.title %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+
+                    <h3
+                        id="fixItFirstHeading"
+                        class="services-heading"
+                        style="display: none;"
+                    >
+                        FIX IT FIRST!
+                    </h3>
+
+                    <div
+                        id="fixItFirstGrid"
+                        class="services-grid"
+                        style="display: none;"
+                    >
+                        <article class="service-card">
+                            <i class="fa-solid fa-broom" aria-hidden="true"></i>
+                            <h4>Housekeeping &amp; Deep Cleaning</h4>
+                        </article>
+                        <article class="service-card">
+                            <i class="fa-solid fa-faucet-drip" aria-hidden="true"></i>
+                            <h4>Plumbing &amp; Utility Fixes</h4>
+                        </article>
+                        <article class="service-card">
+                            <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i>
+                            <h4>Basic Repairs &amp; Handyman Services</h4>
+                        </article>
+                        <article class="service-card">
+                            <i class="fa-solid fa-recycle" aria-hidden="true"></i>
+                            <h4>Pest Control &amp; Waste Management</h4>
+                        </article>
+                        <article class="service-card">
+                            <i class="fa-solid fa-wifi" aria-hidden="true"></i>
+                            <h4>Wi-Fi &amp; Power Support</h4>
+                        </article>
+                        <article class="service-card">
+                            <i class="fa-solid fa-key" aria-hidden="true"></i>
+                            <h4>Key Handover &amp; Co-Hosting Support</h4>
+                        </article>
+                    </div>
+
+                    <div
+                        id="extraCareSection"
+                        style="display: none;"
+                    >
+                        <h3 class="services-heading">
+                            EXTRA CARE
+                        </h3>
+
+                        <div
+                            id="extraCareGrid"
+                            class="services-grid"
+                        ></div>
+                    </div>
+                </div>
+
+                <div
+                    id="servicesListingPreview"
+                    style="display: none;"
+                >
+                    <h3
+                        id="selectedListingTitle"
+                        class="services-heading"
+                    ></h3>
+
+                    <img
+                        id="servicesListingImage"
+                        class="services-visual"
+                        alt="Selected listing"
+                    >
+
+                    <div
+                        id="servicesListingNoImages"
+                        class="placeholder-panel"
+                        style="display: none;"
+                    >
+                        No images available
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    const dashboardShell = document.getElementById("dashboardShell");
+    const dashboardSidebar = document.getElementById("dashboardSidebar");
+    const collapseSidebarBtn = document.getElementById("collapseSidebarBtn");
+    const expandSidebarBtn = document.getElementById("expandSidebarBtn");
+    const sidebarItems = [...document.querySelectorAll(".sidebar-item")];
+    const panels = [...document.querySelectorAll(".dashboard-panel")];
+    const darkModeToggle = document.getElementById("darkModeToggle");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+
+    function setActiveSection(sectionName) {
+        sidebarItems.forEach((button) => {
+            const isActive = button.dataset.section === sectionName;
+            button.classList.toggle("active", isActive);
+        });
+
+        panels.forEach((panel) => {
+            panel.classList.toggle("active", panel.dataset.panel === sectionName);
+        });
+    }
+
+    sidebarItems.forEach((button) => {
+        button.addEventListener("click", () => setActiveSection(button.dataset.section));
+    });
+
+    collapseSidebarBtn.addEventListener("click", () => {
+        dashboardSidebar.classList.add("collapsed");
+        dashboardShell.classList.add("collapsed-layout");
+        expandSidebarBtn.style.display = "flex";
+        collapseSidebarBtn.style.display = "none";
+    });
+
+    expandSidebarBtn.addEventListener("click", () => {
+        dashboardSidebar.classList.remove("collapsed");
+        dashboardShell.classList.remove("collapsed-layout");
+        expandSidebarBtn.style.display = "none";
+        collapseSidebarBtn.style.display = "flex";
+    });
+
+    darkModeToggle.addEventListener("click", () => {
+        dashboardShell.classList.toggle("dark-mode");
+    });
+
+    fullscreenBtn.addEventListener("click", async () => {
+        if (!document.fullscreenElement) {
+            try {
+                await dashboardShell.requestFullscreen();
+            } catch (error) {
+                console.log("Fullscreen not available for this dashboard.");
+            }
+        } else {
+            try {
+                await document.exitFullscreen();
+            } catch (error) {
+                console.log("Unable to exit fullscreen.");
+            }
+        }
+    });
+
+    const servicesListing =
+        document.getElementById("servicesListing");
+
+    const selectedListingTitle =
+        document.getElementById("selectedListingTitle");
+
+    const servicesListingPreview =
+        document.getElementById("servicesListingPreview");
+
+    const servicesListingImage =
+        document.getElementById("servicesListingImage");
+
+    const servicesListingNoImages =
+        document.getElementById("servicesListingNoImages");
+
+    const fixItFirstHeading =
+        document.getElementById("fixItFirstHeading");
+
+    const fixItFirstGrid =
+        document.getElementById("fixItFirstGrid");
+
+    const extraCareSection =
+        document.getElementById("extraCareSection");
+
+    const extraCareGrid =
+        document.getElementById("extraCareGrid");
+
+    let servicesSlideshowTimer = null;
+
+    let servicesSelectionRequest = 0;
+
+    let selectedServicesListingLocation = "";
+
+    const extraCareCatalog = [
+        {
+            name: "DESERT & ARID REGION",
+            keywords: [
+                "desert",
+                "arid",
+                "thar",
+                "rajasthan",
+                "jaisalmer",
+                "bikaner"
+            ],
+            services: [
+                "Tent & Canvas Cleaning",
+                "AC Repair & Filter Cleaning",
+                "Water Tanker Delivery",
+                "Pest & Reptile Control"
+            ]
+        },
+        {
+            name: "HILLY & MOUNTAINOUS REGION",
+            keywords: [
+                "hill",
+                "mountain",
+                "himalaya",
+                "himachal",
+                "uttarakhand",
+                "sikkim",
+                "kashmir",
+                "ladakh",
+                "manali"
+            ],
+            services: [
+                "Chimney & Fireplace Service",
+                "Roof & Gutter Repair",
+                "Slope & Soil Stabilization",
+                "Geyser & Boiler Repair"
+            ]
+        },
+        {
+            name: "RAINY, JUNGLE & FOREST REGION",
+            keywords: [
+                "rainy",
+                "jungle",
+                "forest",
+                "rainforest",
+                "monsoon",
+                "kerala",
+                "assam",
+                "meghalaya"
+            ],
+            services: [
+                "Tree Care & Timber Treatment",
+                "Mold & Damp Treatment",
+                "Pest Control & Fogging",
+                "Roof Waterproofing & Drainage"
+            ]
+        },
+        {
+            name: "BEACHFRONT & COASTAL REGION",
+            keywords: [
+                "beach",
+                "coast",
+                "coastal",
+                "seaside",
+                "shoreline",
+                "goa",
+                "pondicherry",
+                "puducherry",
+                "andaman"
+            ],
+            services: [
+                "Anti-Rust & Coating Treatment",
+                "Sand & Deck Cleaning",
+                "Storm Shutter Repair",
+                "Anti-Mold Paint Service"
+            ]
+        },
+        {
+            name: "VILLA & RESORT AMENITIES",
+            keywords: [
+                "villa",
+                "resort",
+                "pool",
+                "spa",
+                "amenity",
+                "amenities"
+            ],
+            services: [
+                "Pool & Spa Maintenance",
+                "Lawn Care & Landscaping",
+                "CCTV & Security Repair"
+            ]
+        }
+    ];
+
+    function resetServicesSelection() {
+
+        if (servicesSlideshowTimer) {
+            clearInterval(servicesSlideshowTimer);
+            servicesSlideshowTimer = null;
+        }
+
+        selectedListingTitle.textContent = "";
+        selectedListingTitle.style.display = "none";
+        selectedServicesListingLocation = "";
+        servicesListingPreview.style.display = "none";
+        servicesListingImage.removeAttribute("src");
+        servicesListingImage.style.display = "block";
+        servicesListingNoImages.style.display = "none";
+        fixItFirstHeading.style.display = "none";
+        fixItFirstGrid.style.display = "none";
+        extraCareSection.style.display = "none";
+        extraCareGrid.replaceChildren();
+    }
+
+    function getExtraCareCategories(listing) {
+
+        const listingText = [
+            listing.location,
+            listing.extraCareCategory,
+            listing.title
+        ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+        return extraCareCatalog.filter(category =>
+            category.keywords.some(keyword =>
+                listingText.includes(keyword)
+            )
+        );
+    }
+
+    function displayExtraCare(listing) {
+
+        const categories =
+            getExtraCareCategories(listing);
+
+        extraCareGrid.replaceChildren();
+
+        categories.forEach(category => {
+
+            category.services.forEach(service => {
+
+                const card =
+                    document.createElement("article");
+
+                card.className = "service-card";
+
+                const icon =
+                    document.createElement("i");
+
+                icon.className = "fa-solid fa-star";
+                icon.setAttribute("aria-hidden", "true");
+
+                const title =
+                    document.createElement("h4");
+
+                title.textContent = service;
+                card.append(icon, title);
+                extraCareGrid.appendChild(card);
+            });
+        });
+
+        extraCareSection.style.display =
+            categories.length
+                ? "block"
+                : "none";
+    }
+
+    function startServicesSlideshow(images) {
+
+        if (servicesSlideshowTimer) {
+            clearInterval(servicesSlideshowTimer);
+            servicesSlideshowTimer = null;
+        }
+
+        if (!images.length) {
+            servicesListingPreview.style.display = "block";
+            servicesListingImage.removeAttribute("src");
+            servicesListingImage.style.display = "none";
+            servicesListingNoImages.style.display = "flex";
+            return;
+        }
+
+        let imageIndex = 0;
+
+        servicesListingImage.src = images[imageIndex];
+        servicesListingImage.style.display = "block";
+        servicesListingNoImages.style.display = "none";
+        servicesListingPreview.style.display = "block";
+
+        if (images.length > 1) {
+            servicesSlideshowTimer =
+                setInterval(() => {
+                    imageIndex =
+                        (imageIndex + 1) % images.length;
+
+                    servicesListingImage.src =
+                        images[imageIndex];
+                }, 3000);
+        }
+    }
+
+    function openServiceGoogleMapsSearch(event) {
+
+        const card =
+            event.target.closest(".service-card");
+
+        if (!card) {
+            return;
+        }
+
+        const serviceName =
+            card.querySelector("h4")?.textContent.trim();
+
+        const listingLocation =
+            selectedServicesListingLocation.trim();
+
+        if (!serviceName || !listingLocation) {
+            return;
+        }
+
+        const searchQuery =
+            `${serviceName} near ${listingLocation}`;
+
+        const googleMapsUrl =
+            "https://www.google.com/maps/search/?api=1&query=" +
+            encodeURIComponent(searchQuery);
+
+        window.open(
+            googleMapsUrl,
+            "_blank",
+            "noopener,noreferrer"
+        );
+    }
+
+    fixItFirstGrid.addEventListener(
+        "click",
+        openServiceGoogleMapsSearch
+    );
+
+    extraCareGrid.addEventListener(
+        "click",
+        openServiceGoogleMapsSearch
+    );
+
+    servicesListing.addEventListener("change", async () => {
+
+        const listingId =
+            servicesListing.value;
+
+        const selectionRequest =
+            ++servicesSelectionRequest;
+
+        resetServicesSelection();
+
+        if (!listingId) {
+            return;
+        }
+
+        try {
+
+            const response =
+                await fetch(
+                    `/users/dashboard?listingId=${encodeURIComponent(listingId)}`
+                );
+
+            const listing =
+                await response.json();
+
+            if (
+                selectionRequest !==
+                servicesSelectionRequest
+            ) {
+                return;
+            }
+
+            if (!response.ok || !listing.success) {
+                throw new Error(
+                    listing.message ||
+                    "Unable to load listing services."
+                );
+            }
+
+            selectedListingTitle.textContent =
+                listing.title ||
+                "Selected listing";
+
+            selectedServicesListingLocation =
+                typeof listing.location === "string"
+                    ? listing.location
+                    : "";
+
+            selectedListingTitle.style.display =
+                "block";
+
+            const images =
+                Array.isArray(listing.images)
+                    ? listing.images.filter(
+                        image =>
+                            typeof image === "string" &&
+                            image.trim()
+                    )
+                    : [];
+
+            startServicesSlideshow(images);
+
+            fixItFirstHeading.style.display = "block";
+            fixItFirstGrid.style.display = "grid";
+            displayExtraCare(listing);
+
+        } catch (error) {
+
+            console.error(
+                "Unable to load selected listing services:",
+                error
+            );
+        }
+    });
+</script>

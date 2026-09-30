@@ -1,0 +1,220 @@
+<nav class="navbar">
+
+    <div class="nav-left">
+
+        <a href="/" class="logo">
+            <i class="fa-solid fa-compass"></i>
+        </a>
+
+        <a href="/listings" class="nav-link">
+            Home
+        </a>
+
+        <a href="/travel" class="nav-link">
+        All Travel
+        </a>
+
+        <% if (
+            typeof currentUser !== "undefined" &&
+            currentUser &&
+            currentUser.isHost
+        ) { %>
+
+            <a href="/listings/new" class="nav-link">
+                Add new Listing
+            </a>
+
+        <% } %>
+
+    </div>
+
+
+    <!-- USER SECTION -->
+
+    <div class="nav-user">
+
+        <% if (typeof currentUser !== "undefined" && currentUser) { %>
+
+
+            <!-- Become Host -->
+
+            <% if (!currentUser.isHost) { %>
+
+                <a
+                    href="/users/host"
+                    class="nav-link auth-link"
+                >
+                    Become a Host
+                </a>
+
+            <% } %>
+
+
+            <!-- Profile -->
+
+            <a
+                href="/users/profile"
+                class="profile-nav-icon"
+            >
+
+                <% if (currentUser.profilePicture) { %>
+
+                    <img
+                        src="<%= currentUser.profilePicture %>"
+                        alt="Profile"
+                        class="navbar-profile-picture"
+                    >
+
+                <% } else { %>
+
+                    <i class="fa-solid fa-circle-user"></i>
+
+                <% } %>
+
+            </a>
+
+
+            <% if (
+                typeof currentUser !== "undefined" &&
+                currentUser &&
+                currentUser.isHost
+            ) { %>
+
+                <a
+                    href="/users/dashboard"
+                    class="nav-link auth-link"
+                >
+                    Dashboard
+                </a>
+
+            <% } %>
+
+
+            <!-- Logout -->
+
+            <a
+                href="/users/logout"
+                class="nav-link auth-link"
+            >
+                Logout
+            </a>
+
+
+            <!-- Delete Profile -->
+
+            <button
+                type="button"
+                class="delete-profile-nav"
+                onclick="openDeleteProfileModal()"
+                title="Delete Profile"
+            >
+
+                <i class="fa-solid fa-trash"></i>
+
+            </button>
+
+
+        <% } else { %>
+
+
+            <!-- Become Host -->
+
+            <a
+                href="/users/login"
+                class="nav-link auth-link"
+            >
+                Become a Host
+            </a>
+
+
+            <!-- Sign Up -->
+
+            <a
+                href="/users/signup"
+                class="nav-link auth-link"
+            >
+                Sign Up
+            </a>
+
+
+            <!-- Login -->
+
+            <a
+                href="/users/login"
+                class="nav-link auth-link"
+            >
+                Login
+            </a>
+
+
+        <% } %>
+
+    </div>
+
+</nav>
+
+
+<!-- DELETE PROFILE POPUP -->
+
+<% if (typeof currentUser !== "undefined" && currentUser) { %>
+
+<div
+    id="delete-profile-modal"
+    class="delete-profile-modal"
+>
+
+    <div class="delete-profile-box">
+
+        <h3>
+            Delete Profile
+        </h3>
+
+        <p>
+            Do you want to delete your profile?
+        </p>
+
+
+        <div class="delete-profile-buttons">
+
+            <form
+                method="POST"
+                action="/users/delete"
+            >
+
+                <button
+                    type="submit"
+                    class="confirm-delete-btn"
+                >
+                    Yes
+                </button>
+
+            </form>
+
+
+            <a
+                href="/users/profile"
+                class="cancel-delete-btn"
+            >
+                No
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+function openDeleteProfileModal() {
+
+    document
+        .getElementById("delete-profile-modal")
+        .classList.add("active");
+
+}
+
+</script>
+
+<% } %>

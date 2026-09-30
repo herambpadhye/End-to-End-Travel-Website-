@@ -1,0 +1,418 @@
+<% layout("layouts/boilerplate") %>
+
+<div class="travel-page">
+
+    <!-- ========================================================= -->
+    <!-- LEAFLET CSS                                               -->
+    <!-- ========================================================= -->
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+
+    <!-- ========================================================= -->
+    <!-- TRAVEL SEARCH                                             -->
+    <!-- ========================================================= -->
+
+    <div
+        id="travel-search-section"
+        class="travel-search-section"
+    >
+
+        <!-- ===================================================== -->
+        <!-- FROM                                                   -->
+        <!-- ===================================================== -->
+
+        <div
+            id="travel-origin-column"
+            class="travel-search-column travel-origin-column"
+        >
+
+            <div class="travel-search-heading">
+                From
+            </div>
+
+            <div class="travel-search-box">
+
+                <i
+                    class="fa-solid fa-location-crosshairs travel-search-icon"
+                ></i>
+
+                <input
+                    type="text"
+                    id="travel-origin"
+                    placeholder="Your starting location"
+                    autocomplete="off"
+                >
+
+                <button
+                    type="button"
+                    id="travel-origin-detect"
+                    title="Use my current location"
+                >
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- ===================================================== -->
+        <!-- TO                                                     -->
+        <!-- ===================================================== -->
+
+        <div
+            id="travel-destination-column"
+            class="travel-search-column travel-destination-column"
+        >
+
+            <div class="travel-search-heading">
+                To
+            </div>
+
+            <div class="travel-search-box">
+
+                <i
+                    class="fa-solid fa-location-dot travel-search-icon"
+                ></i>
+
+                <input
+                    type="text"
+                    id="travel-destination"
+                    placeholder="Where do you want to go?"
+                    autocomplete="off"
+                >
+
+                <button
+                    type="button"
+                    id="travel-search-button"
+                    title="Search travel options"
+                >
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- ===================================================== -->
+        <!-- DATE                                                   -->
+        <!-- ===================================================== -->
+
+        <div
+            id="travel-date-container"
+            class="travel-date-container"
+            style="display: none;"
+        >
+
+            <i class="fa-regular fa-calendar"></i>
+
+            <input
+                type="date"
+                id="travel-date"
+            >
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- SEARCH STATUS                                             -->
+    <!-- ========================================================= -->
+
+    <div
+        id="travel-status"
+        class="travel-status"
+        style="display: none;"
+    ></div>
+
+
+    <!-- ========================================================= -->
+    <!-- TRAVEL RESULTS                                            -->
+    <!-- ========================================================= -->
+
+    <div
+        id="travel-results"
+        class="travel-results"
+        style="display: none;"
+    >
+
+
+        <!-- ===================================================== -->
+        <!-- FLIGHTS                                                -->
+        <!-- ===================================================== -->
+
+        <section class="travel-section">
+
+            <div class="travel-section-heading">
+
+                <div>
+
+                    <h2>
+                        <i class="fa-solid fa-plane-departure"></i>
+                        Flights
+                    </h2>
+
+                    <p id="flight-route-text">
+                        Available flights
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="flight-list"
+                class="flight-list"
+            ></div>
+
+
+            <button
+                type="button"
+                id="flight-more-button"
+                class="travel-more-button"
+                style="display: none;"
+            >
+                More
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+
+        </section>
+
+
+        <!-- ===================================================== -->
+        <!-- TRAINS                                                 -->
+        <!-- ===================================================== -->
+
+        <section class="travel-section">
+
+            <div class="travel-section-heading">
+
+                <div>
+
+                    <h2>
+                        <i class="fa-solid fa-train"></i>
+                        Trains
+                    </h2>
+
+                    <p>
+                        Available trains
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="train-list"
+                class="train-list"
+            ></div>
+
+
+            <button
+                id="train-more-button"
+                class="travel-more-button"
+                type="button"
+                style="display: none;"
+            >
+                More
+            </button>
+
+        </section>
+
+
+        <!-- ===================================================== -->
+        <!-- BUSES                                                  -->
+        <!-- ===================================================== -->
+
+        <section class="travel-section">
+
+            <div class="travel-section-heading">
+
+                <div>
+
+                    <h2>
+                        <i class="fa-solid fa-bus"></i>
+                        Buses
+                    </h2>
+
+                    <p>
+                        Find bus travel options for your destination.
+                    </p>
+
+                </div>
+
+                <p class="bus-schedule-note">
+                    Note : Schedule may vary due to Variable reasons
+                </p>
+
+            </div>
+
+
+            <div class="travel-placeholder-card">
+
+                <div
+                    id="bus-list"
+                    class="flight-list"
+                ></div>
+
+
+                <button
+                    type="button"
+                    id="bus-more-button"
+                    class="travel-more-button"
+                    style="display: none;"
+                >
+                    More
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- ===================================================== -->
+        <!-- CRUISES                                                -->
+        <!-- ===================================================== -->
+
+        <section class="travel-section">
+
+            <div class="travel-section-heading">
+
+                <div>
+
+                    <h2>
+                        <i class="fa-solid fa-ship"></i>
+                        Cruises
+                    </h2>
+
+                    <p>
+                        Explore cruise travel options.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="travel-placeholder-card">
+
+                <div
+                    id="cruise-list"
+                    class="flight-list"
+                ></div>
+
+
+                <button
+                    type="button"
+                    id="cruise-more-button"
+                    class="travel-more-button"
+                    style="display: none;"
+                >
+                    More
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- ===================================================== -->
+        <!-- ROUTE MAP                                               -->
+        <!-- ===================================================== -->
+
+        <section
+            id="travel-map-section"
+            class="travel-section"
+            style="display: none;"
+        >
+
+            <!-- Google Maps hint -->
+
+            <p
+                id="google-maps-hint"
+                class="google-maps-hint"
+            >
+                <i class="fa-solid fa-location-arrow"></i>
+
+                Click the map to see driving directions in Google Maps
+            </p>
+
+
+            <div class="travel-section-heading">
+
+                <div>
+
+                    <h2>
+                        <i class="fa-solid fa-route"></i>
+                        Your Route
+                    </h2>
+
+                    <p id="travel-map-text">
+                        Route from your starting location to your destination
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- Map -->
+
+            <div
+                id="travel-map"
+                class="travel-map"
+            ></div>
+
+        </section>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- WELCOME MESSAGE                                          -->
+    <!-- ========================================================= -->
+
+    <div
+        id="travel-welcome"
+        class="travel-welcome"
+    >
+
+        <i class="fa-solid fa-earth-americas"></i>
+
+        <h2>
+            Explore your next journey
+        </h2>
+
+        <p>
+            Enter your destination to find travel options.
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- ============================================================= -->
+<!-- LEAFLET JS                                                    -->
+<!-- ============================================================= -->
+
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
+
+
+<!-- ============================================================= -->
+<!-- TRAVEL JS                                                     -->
+<!-- ============================================================= -->
+
+<script src="/js/travel.js"></script>   

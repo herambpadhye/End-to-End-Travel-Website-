@@ -1,0 +1,398 @@
+<% layout("/layouts/boilerplate") %>
+
+<div class="profile-container">
+
+    <h2 class="profile-heading">
+        My Profile
+    </h2>
+
+
+    <div class="profile-card">
+
+
+        <!-- LEFT SIDE -->
+
+        <div class="profile-left">
+
+            <% if (user.profilePicture) { %>
+
+                <img
+                    src="<%= user.profilePicture %>"
+                    alt="Profile Picture"
+                    class="profile-picture"
+                >
+
+            <% } else { %>
+
+                <div class="profile-picture-placeholder">
+
+                    <i class="fa-solid fa-user"></i>
+
+                </div>
+
+            <% } %>
+
+            <a
+                href="/users/dashboard"
+                class="host-dashboard-link"
+            >
+                Dashboard
+            </a>
+
+
+            <% if (typeof error !== "undefined") { %>
+
+                <div class="auth-error">
+                    <%= error %>
+                </div>
+
+            <% } %>
+
+
+            <form
+                method="POST"
+                action="/users/profile"
+                enctype="multipart/form-data"
+                class="profile-form"
+            >
+
+
+                <div class="form-group">
+
+                    <label for="email">
+                        Gmail ID
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value="<%= user.email %>"
+                        placeholder="example@gmail.com"
+                        required
+                        pattern="[a-zA-Z0-9._%+-]+@gmail\.com"
+                        title="Please enter a valid Gmail ID ending with @gmail.com"
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="password">
+                        Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Leave blank to keep your current password"
+                        autocomplete="new-password"
+                    >
+
+                    <p class="profile-field-hint">
+                        Your current password is saved. Enter a new one only if you want to change it.
+                    </p>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="profilePicture">
+                        Profile Picture
+                    </label>
+
+                    <input
+                        type="file"
+                        id="profilePicture"
+                        name="profilePicture"
+                        accept="image/*"
+                    >
+
+                    <% if (user.profilePicture) { %>
+
+                        <p class="profile-field-hint">
+                            Current picture is shown above. Choose a new file only if you want to replace it.
+                        </p>
+
+                    <% } %>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="hostName">
+                        Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="hostName"
+                        name="hostName"
+                        value="<%= user.hostName %>"
+                        placeholder="Enter your name"
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="country">
+                        Country
+                    </label>
+
+                    <input
+                        type="text"
+                        id="country"
+                        name="country"
+                        value="<%= user.country %>"
+                        placeholder="Enter your country"
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="city">
+                        City
+                    </label>
+
+                    <input
+                        type="text"
+                        id="city"
+                        name="city"
+                        value="<%= user.city %>"
+                        placeholder="Enter your city"
+                    >
+
+                </div>
+
+
+                <% if (user.isHost) { %>
+
+
+                    <div class="form-group">
+
+                        <label for="phone">
+                            Phone Number
+                        </label>
+
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            value="<%= user.hostPhone %>"
+                            placeholder="Enter your phone number"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="service">
+                            Type of Service
+                        </label>
+
+                        <input
+                            type="text"
+                            id="service"
+                            name="service"
+                            value="<%= user.hostService %>"
+                            placeholder="Example: Hotel, Homestay, Villa, Travel Service"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="idProof">
+                            ID Proof
+                        </label>
+
+                        <% if (user.idProof) { %>
+
+                            <p class="profile-current-file">
+                                Current ID proof:
+                                <a
+                                    href="<%= user.idProof %>"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    View uploaded ID
+                                </a>
+                            </p>
+
+                        <% } %>
+
+                        <input
+                            type="file"
+                            id="idProof"
+                            name="idProof"
+                            accept=".pdf,image/*"
+                        >
+
+                        <p class="profile-field-hint">
+                            Choose a new file only if you want to replace the ID proof you uploaded as a host.
+                        </p>
+
+                    </div>
+
+
+                <% } %>
+
+
+                <div class="form-group">
+
+                    <label for="hostDescription">
+                        Short Description
+                    </label>
+
+                    <textarea
+                        id="hostDescription"
+                        name="hostDescription"
+                        placeholder="Write a short description about yourself"
+                    ><%= user.hostDescription %></textarea>
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="submit-btn profile-save-btn"
+                >
+                    Save Profile
+                </button>
+
+
+            </form>
+
+        </div>
+
+
+        <!-- RIGHT SIDE -->
+
+        <div class="profile-right">
+
+
+            <div class="profile-name">
+
+                <% if (user.hostName) { %>
+
+                    <%= user.hostName %>
+
+                <% } else { %>
+
+                    <%= firstName %>
+
+                    <% if (surname) { %>
+
+                        <%= surname %>
+
+                    <% } %>
+
+                <% } %>
+
+            </div>
+
+
+            <p class="profile-email">
+                <%= user.email %>
+            </p>
+
+
+            <div class="profile-info">
+
+                <p>
+                    <strong>Gmail ID:</strong>
+
+                    <%= user.email %>
+                </p>
+
+
+                <p>
+                    <strong>Password:</strong>
+
+                    Saved (hidden for security)
+                </p>
+
+
+                <p>
+                    <strong>Name:</strong>
+
+                    <%= user.hostName || "Not added" %>
+                </p>
+
+
+                <p>
+                    <strong>Country:</strong>
+
+                    <%= user.country || "Not added" %>
+                </p>
+
+
+                <p>
+                    <strong>City:</strong>
+
+                    <%= user.city || "Not added" %>
+                </p>
+
+
+                <% if (user.isHost) { %>
+
+                    <p>
+                        <strong>Phone Number:</strong>
+
+                        <%= user.hostPhone || "Not added" %>
+                    </p>
+
+
+                    <p>
+                        <strong>Type of Service:</strong>
+
+                        <%= user.hostService || "Not added" %>
+                    </p>
+
+
+                    <p>
+                        <strong>ID Proof:</strong>
+
+                        <% if (user.idProof) { %>
+
+                            <a
+                                href="<%= user.idProof %>"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                View uploaded ID
+                            </a>
+
+                        <% } else { %>
+
+                            Not added
+
+                        <% } %>
+                    </p>
+
+                <% } %>
+
+
+                <p>
+                    <strong>Description:</strong>
+
+                    <%= user.hostDescription || "Not added" %>
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
