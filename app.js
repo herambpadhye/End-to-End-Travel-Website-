@@ -117,9 +117,8 @@ app.use(async (req, res, next) => {
 // =============================
 
 app.get("/", (req, res) => {
-  res.send("Server route kaam kartoa bhau ky vishay nay");
+  res.redirect("/listings");
 });
-
 // =============================
 // Cookie Test Routes
 // =============================
