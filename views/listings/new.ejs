@@ -6,6 +6,7 @@
         Create a New Listing
     </h2>
 
+
     <form
         method="POST"
         action="/listings"
@@ -14,7 +15,9 @@
         enctype="multipart/form-data"
     >
 
+        <!-- ======================================== -->
         <!-- TITLE -->
+        <!-- ======================================== -->
 
         <div class="form-group">
 
@@ -32,7 +35,9 @@
         </div>
 
 
+        <!-- ======================================== -->
         <!-- DESCRIPTION -->
+        <!-- ======================================== -->
 
         <div class="form-group">
 
@@ -48,9 +53,9 @@
         </div>
 
 
-        <!-- ============================= -->
+        <!-- ======================================== -->
         <!-- MULTIPLE IMAGE UPLOAD -->
-        <!-- ============================= -->
+        <!-- ======================================== -->
 
         <div class="form-group">
 
@@ -81,10 +86,12 @@
 
             </div>
 
+
             <div
                 id="imagePreview"
                 class="image-preview-container"
             ></div>
+
 
             <span
                 id="imageError"
@@ -94,7 +101,9 @@
         </div>
 
 
+        <!-- ======================================== -->
         <!-- PRICE + COUNTRY -->
+        <!-- ======================================== -->
 
         <div class="form-row">
 
@@ -130,7 +139,9 @@
         </div>
 
 
+        <!-- ======================================== -->
         <!-- LOCATION -->
+        <!-- ======================================== -->
 
         <div class="form-group">
 
@@ -147,7 +158,9 @@
         </div>
 
 
+        <!-- ======================================== -->
         <!-- SUBMIT -->
+        <!-- ======================================== -->
 
         <button
             type="submit"
@@ -180,7 +193,10 @@
         document.getElementById("imageError");
 
 
-    // Open file picker
+    // =====================================================
+    // OPEN FILE PICKER
+    // =====================================================
+
     uploadImagesBtn.addEventListener(
         "click",
         function () {
@@ -203,12 +219,14 @@
 
             imageError.innerText = "";
 
-            const files = Array.from(
-                imageInput.files
-            );
+            const files =
+                Array.from(
+                    imageInput.files
+                );
 
 
             // Maximum 16 images
+
             if (files.length > 16) {
 
                 imageError.innerText =
@@ -222,6 +240,7 @@
 
 
             // Check image files
+
             for (const file of files) {
 
                 if (!file.type.startsWith("image/")) {
@@ -241,11 +260,13 @@
 
 
             // Create previews
+
             files.forEach(
                 function (file) {
 
                     const reader =
                         new FileReader();
+
 
                     reader.onload =
                         function (event) {
@@ -301,7 +322,10 @@
                 let isValid = true;
 
 
-                // Validate normal form fields
+                // =========================================
+                // NORMAL FORM FIELDS
+                // =========================================
+
                 document
                     .querySelectorAll(".form-group")
                     .forEach(
@@ -342,6 +366,7 @@
 
 
                             // Price validation
+
                             if (
                                 input &&
                                 input.name ===
@@ -363,15 +388,18 @@
                     );
 
 
-                // =================================================
+                // =========================================
                 // IMAGE VALIDATION
-                // =================================================
+                // =========================================
 
                 const files =
                     imageInput.files;
 
 
-                if (!files || files.length === 0) {
+                if (
+                    !files ||
+                    files.length === 0
+                ) {
 
                     imageError.innerText =
                         "Please upload at least one image.";
@@ -381,7 +409,9 @@
                 }
 
 
-                if (files.length > 16) {
+                if (
+                    files.length > 16
+                ) {
 
                     imageError.innerText =
                         "You can select a maximum of 16 images.";
@@ -390,6 +420,10 @@
 
                 }
 
+
+                // =========================================
+                // STOP SUBMISSION IF INVALID
+                // =========================================
 
                 if (!isValid) {
 

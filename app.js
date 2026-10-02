@@ -14,7 +14,7 @@ const User = require("./models/user.js");
 const usersRouter = require("./classroom/routes/user.js");
 const travelRouter = require("./classroom/routes/travel.js");
 const listingsRouter = require("./classroom/routes/posts.js");
-
+//const atlasConnection = require("./config/atlas.js");
 // =============================
 // Custom Error Class
 // =============================
@@ -40,6 +40,7 @@ const wrapAsync = (fn) => {
 // =============================
 // MongoDB Connection
 // =============================
+
 
 const MONGO_URL = process.env.MONGODB_URI;
 
