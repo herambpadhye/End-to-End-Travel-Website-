@@ -42,11 +42,11 @@ const wrapAsync = (fn) => {
 // =============================
 
 
-const MONGO_URL = process.env.MONGODB_ATLAS_URI;
+const MONGO_URL = process.env.MONGODB_URI;
 
 async function main() {
   if (!MONGO_URL) {
-    throw new Error("MONGODB_ATLAS_URI is not defined");
+    throw new Error("MONGODB_URI is not defined");
   }
 
   await mongoose.connect(MONGO_URL);
