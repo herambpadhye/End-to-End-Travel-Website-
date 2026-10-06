@@ -5,6 +5,7 @@ const Listing = require("../../models/list.js");
 const Review = require("../../models/review.js");
 const multer = require("multer");
 const bcrypt = require("bcrypt");
+const cloudinary = require("../../config/cloudinary.js");
 const path = require("path");
 const fs = require("fs");
 
@@ -198,6 +199,29 @@ function deletePublicFile(fileUrl) {
 
     if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+    }
+
+}
+
+
+function isCloudinarySecureUrl(fileUrl) {
+
+    try {
+
+        const parsedUrl = new URL(fileUrl);
+        const cloudName = cloudinary.config().cloud_name;
+
+        return Boolean(
+            cloudName &&
+            parsedUrl.protocol === "https:" &&
+            parsedUrl.hostname === "res.cloudinary.com" &&
+            parsedUrl.pathname.startsWith(`/${cloudName}/`)
+        );
+
+    } catch (error) {
+
+        return false;
+
     }
 
 }
@@ -410,6 +434,74 @@ router.get("/host", (req, res) => {
     res.render("users/host.ejs");
 
 });
+
+
+async function sendCloudinarySignature(req, res) {
+
+    if (!req.session.userId) {
+        return res.status(401).json({
+            message: "Please log in before uploading host documents."
+        });
+    }
+
+    const requestData = req.method === "GET"
+        ? req.query
+        : req.body || {};
+    const folder = requestData.folder;
+    const resourceType = requestData.resource_type;
+    const allowedResourceTypes = {
+        "wanderlust/hosts/profile": ["image"],
+        "wanderlust/hosts/id-proofs": ["image", "raw"]
+    };
+
+    if (
+        !allowedResourceTypes[folder] ||
+        !allowedResourceTypes[folder].includes(resourceType)
+    ) {
+        return res.status(400).json({
+            message: "Invalid Cloudinary upload destination."
+        });
+    }
+
+    const cloudinaryConfig = cloudinary.config();
+
+    if (
+        !cloudinaryConfig.cloud_name ||
+        !cloudinaryConfig.api_key ||
+        !cloudinaryConfig.api_secret
+    ) {
+        return res.status(503).json({
+            message: "Cloudinary uploads are not configured."
+        });
+    }
+
+    const uploadParameters = {
+        folder,
+        timestamp: Math.floor(Date.now() / 1000)
+    };
+    const signature = cloudinary.utils.api_sign_request(
+        uploadParameters,
+        cloudinaryConfig.api_secret
+    );
+
+    res.set("Cache-Control", "no-store");
+    return res.json({
+        cloudName: cloudinaryConfig.cloud_name,
+        apiKey: cloudinaryConfig.api_key,
+        timestamp: uploadParameters.timestamp,
+        signature,
+        uploadParameters
+    });
+
+}
+
+
+router.get("/cloudinary-signature", sendCloudinarySignature);
+router.post(
+    "/cloudinary-signature",
+    express.json({ limit: "1kb" }),
+    sendCloudinarySignature
+);
 
 
 // ========================================
@@ -687,16 +779,7 @@ router.get("/dashboard", async (req, res) => {
 
 router.post(
     "/host",
-    hostUpload.fields([
-        {
-            name: "profilePicture",
-            maxCount: 1
-        },
-        {
-            name: "idProof",
-            maxCount: 1
-        }
-    ]),
+    hostUpload.none(),
     async (req, res) => {
 
         try {
@@ -746,36 +829,30 @@ router.post(
 
             }
 
+            const profilePictureUrl = req.body.profilePictureCloudinaryUrl;
+            const profilePicturePublicId = req.body.profilePictureCloudinaryPublicId;
+            const idProofUrl = req.body.idProofCloudinaryUrl;
+            const idProofPublicId = req.body.idProofCloudinaryPublicId;
+
+            if (
+                !profilePicturePublicId ||
+                !idProofPublicId ||
+                !isCloudinarySecureUrl(profilePictureUrl) ||
+                !isCloudinarySecureUrl(idProofUrl)
+            ) {
+                return res.render("users/host.ejs", {
+                    error: "Please upload a valid profile picture and ID proof."
+                });
+            }
+
             user.isHost = true;
 
             user.country = req.body.country || "";
             user.city = req.body.city || "";
             user.hostPhone = req.body.phone || "";
             user.hostService = req.body.service || "";
-
-            if (
-                req.files &&
-                req.files.profilePicture &&
-                req.files.profilePicture[0]
-            ) {
-
-                user.profilePicture =
-                    "/uploads/" +
-                    req.files.profilePicture[0].filename;
-
-            }
-
-            if (
-                req.files &&
-                req.files.idProof &&
-                req.files.idProof[0]
-            ) {
-
-                user.idProof =
-                    "/uploads/" +
-                    req.files.idProof[0].filename;
-
-            }
+            user.profilePicture = profilePictureUrl;
+            user.idProof = idProofUrl;
 
             await user.save();
 

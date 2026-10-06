@@ -159,7 +159,7 @@
                     type="file"
                     id="idProof"
                     name="idProof"
-                    accept=".pdf,image/*"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.avif,image/jpeg,image/png,image/webp,image/gif,image/avif,application/pdf"
                     required
                 >
 
@@ -190,3 +190,197 @@
     </div>
 
 </div>
+
+<script>
+    (() => {
+        const form = document.querySelector('.auth-card form[action="/users/host"]');
+
+        if (!form) {
+            return;
+        }
+
+        const profilePictureInput = form.elements.namedItem("profilePicture");
+        const idProofInput = form.elements.namedItem("idProof");
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.textContent;
+        let uploading = false;
+
+        function showError(message) {
+            let errorArea = form.parentElement.querySelector(".auth-error");
+
+            if (!errorArea) {
+                errorArea = document.createElement("div");
+                errorArea.className = "auth-error";
+                form.parentElement.insertBefore(errorArea, form);
+            }
+
+            errorArea.textContent = message;
+        }
+
+        function clearError() {
+            const errorArea = form.parentElement.querySelector(".auth-error");
+
+            if (errorArea) {
+                errorArea.remove();
+            }
+        }
+
+        function isSupportedIdProof(file) {
+            const extension = file.name.split(".").pop().toLowerCase();
+            const allowedExtensions = ["pdf", "jpg", "jpeg", "png", "webp", "gif", "avif"];
+
+            return allowedExtensions.includes(extension);
+        }
+
+        async function uploadToCloudinary(file, folder, resourceType) {
+            const signatureResponse = await fetch("/users/cloudinary-signature", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ folder, resource_type: resourceType })
+            });
+            const signatureData = await signatureResponse.json();
+
+            if (!signatureResponse.ok) {
+                throw new Error(signatureData.message || "Unable to prepare a secure file upload.");
+            }
+
+            const credentials = signatureData.credentials || signatureData;
+            const cloudName = credentials.cloudName || credentials.cloud_name;
+            const apiKey = credentials.apiKey || credentials.api_key;
+            const uploadParameters =
+                credentials.uploadParameters ||
+                credentials.upload_parameters ||
+                credentials.params ||
+                {};
+            const timestamp = credentials.timestamp || uploadParameters.timestamp;
+            const signature = credentials.signature;
+
+            if (!cloudName || !apiKey || !timestamp || !signature) {
+                throw new Error("The server returned incomplete Cloudinary signing information.");
+            }
+
+            const uploadData = new FormData();
+
+            Object.entries(uploadParameters).forEach(([key, value]) => {
+                if (key !== "file" && key !== "api_key" && key !== "signature") {
+                    uploadData.append(key, value);
+                }
+            });
+            uploadData.set("file", file);
+            uploadData.set("api_key", apiKey);
+            uploadData.set("timestamp", timestamp);
+            uploadData.set("signature", signature);
+            uploadData.set("folder", folder);
+
+            const uploadResponse = await fetch(
+                `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/${resourceType}/upload`,
+                {
+                    method: "POST",
+                    body: uploadData
+                }
+            );
+            const uploadResult = await uploadResponse.json();
+
+            if (!uploadResponse.ok) {
+                throw new Error(
+                    uploadResult.error?.message || "Cloudinary could not upload one of the selected files."
+                );
+            }
+
+            if (!uploadResult.secure_url || !uploadResult.public_id) {
+                throw new Error("Cloudinary did not return the uploaded file details.");
+            }
+
+            return uploadResult;
+        }
+
+        function setHiddenValue(name, value) {
+            let input = form.querySelector(`input[type="hidden"][name="${name}"]`);
+
+            if (!input) {
+                input = document.createElement("input");
+                input.type = "hidden";
+                input.name = name;
+                form.appendChild(input);
+            }
+
+            input.value = value;
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            if (uploading) {
+                return;
+            }
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const profilePicture = profilePictureInput.files[0];
+            const idProof = idProofInput.files[0];
+
+            if (!profilePicture || !idProof) {
+                showError("Please select both a profile picture and an ID proof.");
+                return;
+            }
+
+            if (!isSupportedIdProof(idProof)) {
+                showError("ID proof must be a PDF, JPG, JPEG, PNG, WEBP, GIF, or AVIF file.");
+                return;
+            }
+
+            uploading = true;
+            submitButton.disabled = true;
+            submitButton.textContent = "Uploading...";
+            clearError();
+
+            try {
+                const idProofResourceType =
+                    idProof.type === "application/pdf" || /\.pdf$/i.test(idProof.name)
+                        ? "raw"
+                        : "image";
+
+                const uploadResults = await Promise.allSettled([
+                    uploadToCloudinary(
+                        profilePicture,
+                        "wanderlust/hosts/profile",
+                        "image"
+                    ),
+                    uploadToCloudinary(
+                        idProof,
+                        "wanderlust/hosts/id-proofs",
+                        idProofResourceType
+                    )
+                ]);
+                const failedUpload = uploadResults.find(result => result.status === "rejected");
+
+                if (failedUpload) {
+                    throw failedUpload.reason;
+                }
+
+                const [profilePictureResult, idProofResult] = uploadResults.map(
+                    result => result.value
+                );
+
+                setHiddenValue("profilePictureCloudinaryUrl", profilePictureResult.secure_url);
+                setHiddenValue("profilePictureCloudinaryPublicId", profilePictureResult.public_id);
+                setHiddenValue("idProofCloudinaryUrl", idProofResult.secure_url);
+                setHiddenValue("idProofCloudinaryPublicId", idProofResult.public_id);
+
+                profilePictureInput.disabled = true;
+                idProofInput.disabled = true;
+                HTMLFormElement.prototype.submit.call(form);
+            } catch (error) {
+                showError(error.message || "File upload failed. Please try again.");
+                uploading = false;
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
+        });
+    })();
+</script>
