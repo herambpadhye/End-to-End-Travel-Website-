@@ -1,10 +1,178 @@
 <% layout("/layouts/boilerplate") %>
+<style>
+  .occasion-search-wrap {
+    width: min(1120px, calc(100% - 24px));
+    margin: 18px auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .occasion-search-bar {
+    width: min(1120px, 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    flex-wrap: nowrap;
+  }
+
+  .occasion-search-field,
+  .occasion-date-field {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 12px;
+    background: #fff;
+    border: 1px solid rgba(17, 24, 39, 0.12);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+    flex: 1 1 0;
+    max-width: 260px;
+  }
+
+  .occasion-search-field {
+    min-width: 260px;
+  }
+
+  .occasion-field-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #536175;
+    font-size: 0.96rem;
+    min-width: 18px;
+  }
+
+  .occasion-search-field input,
+  .occasion-date-field input {
+    width: 100%;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: #1f2937;
+    font-size: 0.96rem;
+    outline: none;
+    padding: 0 0 0 8px;
+    font-family: inherit;
+  }
+
+  .occasion-search-field input::placeholder,
+  .occasion-date-field input::placeholder {
+    color: #69778a;
+    opacity: 0.9;
+    transition: opacity 0.25s ease;
+  }
+
+  .occasion-search-field input:focus::placeholder,
+  .occasion-date-field input:focus::placeholder {
+    opacity: 0.6;
+  }
+
+  .occasion-search-field input:focus,
+  .occasion-date-field input:focus {
+    outline: none;
+  }
+
+  .occasion-search-button {
+    min-width: 120px;
+    border-radius: 12px;
+    padding: 0.72rem 1.3rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .occasion-validation {
+    width: min(1120px, 100%);
+    min-height: 20px;
+    margin-top: 8px;
+    text-align: center;
+    color: #b42318;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .occasion-no-results {
+    width: min(1120px, calc(100% - 24px));
+    margin: 24px auto 0;
+    padding: 2rem 1.5rem;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    text-align: center;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+
+  .occasion-no-results p {
+    margin: 0;
+    font-size: 1.15rem;
+    color: #1f2937;
+    font-weight: 700;
+  }
+
+  @media (max-width: 768px) {
+    .occasion-search-wrap {
+      width: calc(100% - 18px);
+    }
+
+    .occasion-search-bar {
+      flex-direction: column;
+      width: 100%;
+      align-items: stretch;
+      padding: 12px;
+    }
+
+    .occasion-search-field,
+    .occasion-date-field,
+    .occasion-search-button {
+      width: 100%;
+      max-width: none;
+    }
+
+    .occasion-search-button {
+      min-width: 100%;
+    }
+  }
+</style>
+
   <body>
+  <div class="occasion-search-wrap">
+    <div class="occasion-search-bar">
+      <div class="occasion-search-field">
+        <span class="occasion-field-icon"><i class="fa fa-search"></i></span>
+        <input id="occasionSearchInput" type="text" autocomplete="off" placeholder="What's your special Travel Occasion? honeymoon stays?" />
+      </div>
+
+      <div class="occasion-date-field">
+        <span class="occasion-field-icon"><i class="fa fa-calendar"></i></span>
+        <input id="occasionFromDate" type="date" aria-label="From date" />
+      </div>
+
+      <div class="occasion-date-field">
+        <span class="occasion-field-icon"><i class="fa fa-calendar"></i></span>
+        <input id="occasionToDate" type="date" aria-label="To date" />
+      </div>
+
+      <button type="button" class="btn btn-primary occasion-search-button" id="occasionSearchButton">Search</button>
+    </div>
+    <div id="occasionDateValidation" class="occasion-validation" aria-live="polite"></div>
+  </div>
+
   <h3>All Listings</h3>
 
 <div class="listing-container">
   <% for (let listing of allListings) { %>
-    <a href="/listings/<%= listing._id %>" class="listing-link">
+    <a href="/listings/<%= listing._id %>" class="listing-link" data-title="<%= listing.title || '' %>" data-location="<%= listing.location || '' %>" data-description="<%= listing.description || '' %>">
       <div class="card">
         <img src="<%= listing.image.url %>" class="card-img-top">
         <div class="card-body">
@@ -19,6 +187,315 @@
     </a>
   <% } %>
 </div>
+
+<div id="occasionNoResults" class="occasion-no-results" hidden>
+  <p>No stays found</p>
+  <button type="button" class="btn btn-outline-secondary" id="occasionClearSearch">Clear search</button>
+</div>
+
+<script>
+  (() => {
+    const searchInput = document.getElementById('occasionSearchInput');
+    const fromDateInput = document.getElementById('occasionFromDate');
+    const toDateInput = document.getElementById('occasionToDate');
+    const searchButton = document.getElementById('occasionSearchButton');
+    const validationMessage = document.getElementById('occasionDateValidation');
+    const noResultsSection = document.getElementById('occasionNoResults');
+    const clearSearchButton = document.getElementById('occasionClearSearch');
+    const listingCards = Array.from(document.querySelectorAll('.listing-link'));
+
+    const listingSearchMeta = {
+      'Desert Oasis': {
+        tags: ['couple_friendly', 'nature_adventure', 'religious_heritage'],
+        details: ['canopy bed', 'intimate setup', 'quiet', 'tent camping', 'arid landscape', 'traditional ethnic decor']
+      },
+      'Cozy Beachfront Cottage': {
+        tags: ['couple_friendly', 'short_trip'],
+        details: ['beach views', 'intimate', 'quick coastal getaway']
+      },
+      'Secluded Treehouse Getaway': {
+        tags: ['couple_friendly', 'nature_adventure'],
+        details: ['private', 'backwaters', 'lush jungle']
+      },
+      'Comfort Zone Villa': {
+        tags: ['group_stay', 'family_friendly'],
+        details: ['spacious', 'swimming pool', 'lounging areas', 'safe open layout']
+      },
+      'Misty Mountain Retreat': {
+        tags: ['group_stay', 'nature_adventure'],
+        details: ['large terrace', 'open views', 'high altitude']
+      },
+      'Serene Tea Garden Cottage': {
+        tags: ['family_friendly', 'short_trip', 'workation', 'nature_adventure'],
+        details: ['peaceful', 'open greenery', 'tea hills', 'nature trails', 'quiet workspace']
+      },
+      'Mountain 3': {
+        tags: ['short_trip', 'workation'],
+        details: ['simple bedroom', 'desk setup', 'short stays']
+      }
+    };
+
+    const tagPatterns = {
+      couple_friendly: ['couple', 'couples', 'honeymoon', 'romance', 'romantic', 'private pool', 'candlelight', 'couple friendly'],
+      family_friendly: ['family', 'families', 'kids', 'kid', 'parents', 'children', 'pet friendly', 'family resort', 'kid friendly', 'villa with kitchen', 'big family homestay'],
+      group_stay: ['party', 'friends', 'friend', 'group', 'bachelor', 'girls trip', 'group stay', 'party villa', 'friends trip', 'bachelor party villa', 'girls trip stay'],
+      short_trip: ['weekend', 'getaway', 'staycation', 'nearby', 'road trip', 'one night', '1 night', 'short trip', 'weekend getaway', 'staycation near me'],
+      workation: ['workation', 'wifi', 'office', 'team outing', 'workspace', 'office team outing'],
+      long_stay: ['long stay', 'long stay villa'],
+      nature_adventure: ['treehouse', 'tree house', 'camping', 'trekking', 'river view', 'nature', 'peaceful', 'jungle', 'backwaters', 'mountain', 'treehouse stay', 'camping setup'],
+      religious_heritage: ['temple', 'pilgrimage', 'heritage', 'religious', 'temple stay', 'heritage stay']
+    };
+
+    const typoMap = {
+      honeymoonn: 'honeymoon',
+      couplee: 'couple',
+      famly: 'family',
+      frnds: 'friends',
+      grup: 'group',
+      getway: 'getaway',
+      workationn: 'workation',
+      'tree house': 'treehouse',
+      'treehouse': 'treehouse'
+    };
+
+    const keywordPool = [
+      "What's your special Travel Occasion? honeymoon stays?",
+      "What's your special Travel Occasion? couple friendly?",
+      "What's your special Travel Occasion? romantic resort?",
+      "What's your special Travel Occasion? private pool villa?",
+      "What's your special Travel Occasion? candlelight stay?",
+      "What's your special Travel Occasion? group stay?",
+      "What's your special Travel Occasion? party villa?",
+      "What's your special Travel Occasion? friends trip?",
+      "What's your special Travel Occasion? bachelor party villa?",
+      "What's your special Travel Occasion? girls trip stay?",
+      "What's your special Travel Occasion? family resort?",
+      "What's your special Travel Occasion? kid friendly stay?",
+      "What's your special Travel Occasion? villa with kitchen?",
+      "What's your special Travel Occasion? big family homestay?",
+      "What's your special Travel Occasion? pet friendly stay?",
+      "What's your special Travel Occasion? weekend getaway?",
+      "What's your special Travel Occasion? staycation near me?",
+      "What's your special Travel Occasion? road trip stay?",
+      "What's your special Travel Occasion? 1 night stay?",
+      "What's your special Travel Occasion? workation?",
+      "What's your special Travel Occasion? long stay villa?",
+      "What's your special Travel Occasion? wifi resort?",
+      "What's your special Travel Occasion? office team outing?",
+      "What's your special Travel Occasion? treehouse stay?",
+      "What's your special Travel Occasion? camping setup?",
+      "What's your special Travel Occasion? trekking homestay?",
+      "What's your special Travel Occasion? river view resort?",
+      "What's your special Travel Occasion? peaceful stay?",
+      "What's your special Travel Occasion? temple stay?",
+      "What's your special Travel Occasion? pilgrimage hotel?",
+      "What's your special Travel Occasion? heritage stay?"
+    ];
+
+    let placeholderQueue = [];
+    let placeholderTimer = null;
+
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function normalizeText(value) {
+      let normalized = (value || '').toLowerCase();
+      normalized = normalized.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+      normalized = normalized.replace(/&/g, ' and ');
+      normalized = normalized.replace(/[^a-z0-9\s]/g, ' ');
+      Object.keys(typoMap).forEach((wrongValue) => {
+        normalized = normalized.replace(new RegExp(escapeRegExp(wrongValue), 'gi'), typoMap[wrongValue]);
+      });
+      normalized = normalized.replace(/\b1\s+night\b/g, 'one night');
+      normalized = normalized.replace(/\btree\s+house\b/g, 'treehouse');
+      normalized = normalized.replace(/\s+/g, ' ').trim();
+      return normalized;
+    }
+
+    function buildPlaceholderQueue() {
+      const queue = [];
+      const remaining = keywordPool.slice();
+      let previous = null;
+
+      while (remaining.length) {
+        let nextIndex = Math.floor(Math.random() * remaining.length);
+        if (remaining.length > 1 && previous && remaining[nextIndex] === previous) {
+          nextIndex = (nextIndex + 1) % remaining.length;
+        }
+
+        const chosen = remaining.splice(nextIndex, 1)[0];
+        queue.push(chosen);
+        previous = chosen;
+
+        if (Math.random() < 0.28 && remaining.length >= 1) {
+          queue.push('Where do you want to go?');
+        }
+      }
+
+      return queue;
+    }
+
+    function setPlaceholderFade() {
+      searchInput.classList.remove('occasion-placeholder-fade');
+      void searchInput.offsetWidth;
+      searchInput.classList.add('occasion-placeholder-fade');
+      setTimeout(() => {
+        searchInput.classList.remove('occasion-placeholder-fade');
+      }, 220);
+    }
+
+    function updatePlaceholder() {
+      if (document.activeElement === searchInput || searchInput.value.trim()) {
+        searchInput.setAttribute('placeholder', '');
+        return;
+      }
+
+      if (!placeholderQueue.length) {
+        placeholderQueue = buildPlaceholderQueue();
+      }
+
+      const next = placeholderQueue.shift();
+      if (next) {
+        searchInput.setAttribute('placeholder', next);
+        setPlaceholderFade();
+      }
+    }
+
+    function startPlaceholderRotation() {
+      if (placeholderTimer) {
+        clearInterval(placeholderTimer);
+      }
+
+      placeholderTimer = setInterval(() => {
+        updatePlaceholder();
+      }, 2600);
+    }
+
+    function validateDates() {
+      const fromValue = fromDateInput.value;
+      const toValue = toDateInput.value;
+
+      if (!fromValue || !toValue) {
+        validationMessage.textContent = '';
+        return true;
+      }
+
+      const fromTime = new Date(fromValue).getTime();
+      const toTime = new Date(toValue).getTime();
+
+      if (toTime <= fromTime) {
+        validationMessage.textContent = 'Please choose a check-out date after your check-in date.';
+        return false;
+      }
+
+      validationMessage.textContent = '';
+      return true;
+    }
+
+    function getMatchingTags(normalizedQuery) {
+      return Object.entries(tagPatterns).reduce((matches, [tag, terms]) => {
+        if (terms.some((term) => normalizedQuery.includes(normalizeText(term)))) {
+          matches.push(tag);
+        }
+        return matches;
+      }, []);
+    }
+
+    function cardMatchesQuery(card) {
+      const normalizedQuery = normalizeText(searchInput.value);
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const cardTitle = (card.dataset.title || '').trim();
+      const cardLocation = (card.dataset.location || '').trim();
+      const cardDescription = (card.dataset.description || '').trim();
+      const cardMeta = listingSearchMeta[cardTitle] || { tags: [], details: [] };
+      const searchText = [cardTitle, cardLocation, cardDescription, ...(cardMeta.details || []), ...(cardMeta.tags || [])].join(' ');
+      const normalizedSearchText = normalizeText(searchText);
+      const matchingTags = getMatchingTags(normalizedQuery);
+      const hasTagMatch = matchingTags.some((tag) => (cardMeta.tags || []).includes(tag));
+
+      const queryParts = normalizedQuery.split(' ').filter(Boolean);
+      const hasTextMatch = queryParts.some((part) => normalizedSearchText.includes(part));
+      const hasExactTextMatch = normalizeText(cardTitle).includes(normalizedQuery)
+        || normalizeText(cardLocation).includes(normalizedQuery)
+        || normalizeText(cardDescription).includes(normalizedQuery)
+        || normalizeText(searchText).includes(normalizedQuery);
+
+      return hasTagMatch || hasTextMatch || hasExactTextMatch;
+    }
+
+    function applyListingFilter() {
+      let visibleCount = 0;
+
+      listingCards.forEach((card) => {
+        const shouldShow = cardMatchesQuery(card);
+        card.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) {
+          visibleCount += 1;
+        }
+      });
+
+      noResultsSection.hidden = visibleCount !== 0;
+    }
+
+    function clearSearch() {
+      searchInput.value = '';
+      fromDateInput.value = '';
+      toDateInput.value = '';
+      validationMessage.textContent = '';
+      applyListingFilter();
+      if (!document.activeElement || document.activeElement !== searchInput) {
+        updatePlaceholder();
+      }
+    }
+
+    searchInput.addEventListener('focus', () => {
+      searchInput.setAttribute('placeholder', '');
+    });
+
+    searchInput.addEventListener('blur', () => {
+      if (!searchInput.value.trim()) {
+        updatePlaceholder();
+      }
+    });
+
+    searchInput.addEventListener('input', () => {
+      if (searchInput.value.trim()) {
+        searchInput.setAttribute('placeholder', '');
+      }
+      applyListingFilter();
+    });
+
+    searchButton.addEventListener('click', () => {
+      if (!validateDates()) {
+        return;
+      }
+      applyListingFilter();
+    });
+
+    fromDateInput.addEventListener('change', () => {
+      validateDates();
+    });
+
+    toDateInput.addEventListener('change', () => {
+      validateDates();
+    });
+
+    clearSearchButton.addEventListener('click', () => {
+      clearSearch();
+      searchInput.focus();
+    });
+
+    placeholderQueue = buildPlaceholderQueue();
+    searchInput.setAttribute('placeholder', placeholderQueue.shift() || "What's your special Travel Occasion? honeymoon stays?");
+    startPlaceholderRotation();
+    applyListingFilter();
+  })();
+</script>
     
    
   </body>

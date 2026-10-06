@@ -3536,3 +3536,155 @@ CRUISE RESPONSIVE DESIGN
         font-size: 20px;
     }
 }
+
+/* Occasion search bar */
+.occasion-search-wrap {
+    width: min(1120px, calc(100% - 24px));
+    margin: 18px auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.occasion-search-bar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    box-sizing: border-box;
+}
+
+.occasion-search-field,
+.occasion-search-wrap .occasion-date-field {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    min-width: 0;
+    max-width: 260px;
+    flex: 1 1 0;
+    padding: 0 12px;
+    background: #fff;
+    border: 1px solid rgba(17, 24, 39, 0.12);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+    box-sizing: border-box;
+}
+
+.occasion-search-field {
+    min-width: 260px;
+}
+
+.occasion-search-field input,
+.occasion-search-wrap .occasion-date-field input {
+    width: 100%;
+    min-width: 0;
+    padding: 0 0 0 8px;
+    border: 0;
+    background: transparent;
+    color: #1f2937;
+    font: inherit;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.occasion-search-field input::placeholder {
+    color: #69778a;
+    opacity: 0.9;
+}
+
+.occasion-search-field input.occasion-placeholder-fade::placeholder {
+    animation: occasion-search-placeholder-fade 220ms ease;
+}
+
+@keyframes occasion-search-placeholder-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 0.9;
+    }
+}
+
+.occasion-search-wrap .occasion-field-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    color: #536175;
+}
+
+.occasion-search-button {
+    min-height: 48px;
+    min-width: 120px;
+    padding: 0.72rem 1.3rem;
+    border-radius: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+.occasion-validation {
+    width: 100%;
+    min-height: 20px;
+    margin-top: 8px;
+    color: #b42318;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.occasion-no-results {
+    width: min(1120px, calc(100% - 24px));
+    margin: 24px auto 0;
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.occasion-no-results[hidden] {
+    display: none;
+}
+
+.occasion-no-results p {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .occasion-search-wrap {
+        width: calc(100% - 18px);
+    }
+
+    .occasion-search-bar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+    }
+
+    .occasion-search-field,
+    .occasion-search-wrap .occasion-date-field,
+    .occasion-search-button {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+    }
+}
