@@ -3629,6 +3629,13 @@ CRUISE RESPONSIVE DESIGN
     font-weight: 600;
     white-space: nowrap;
     box-sizing: border-box;
+    background-color: #ff385c;
+    border-color: #ff385c;
+}
+
+.occasion-search-button:hover {
+    background-color: #e03150;
+    border-color: #e03150;
 }
 
 .occasion-validation {
