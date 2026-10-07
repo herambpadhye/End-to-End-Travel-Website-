@@ -150,7 +150,7 @@
     <div class="occasion-search-bar">
       <div class="occasion-search-field">
         <span class="occasion-field-icon"><i class="fa fa-search"></i></span>
-        <input id="occasionSearchInput" type="text" autocomplete="off" placeholder="What's your special Travel Occasion? honeymoon stays?" />
+        <input id="occasionSearchInput" type="text" autocomplete="off" placeholder="Enter Travel Occasion" />
       </div>
 
       <div class="occasion-date-field">
@@ -259,37 +259,10 @@
     };
 
     const keywordPool = [
-      "What's your special Travel Occasion? honeymoon stays?",
-      "What's your special Travel Occasion? couple friendly?",
-      "What's your special Travel Occasion? romantic resort?",
-      "What's your special Travel Occasion? private pool villa?",
-      "What's your special Travel Occasion? candlelight stay?",
-      "What's your special Travel Occasion? group stay?",
-      "What's your special Travel Occasion? party villa?",
-      "What's your special Travel Occasion? friends trip?",
-      "What's your special Travel Occasion? bachelor party villa?",
-      "What's your special Travel Occasion? girls trip stay?",
-      "What's your special Travel Occasion? family resort?",
-      "What's your special Travel Occasion? kid friendly stay?",
-      "What's your special Travel Occasion? villa with kitchen?",
-      "What's your special Travel Occasion? big family homestay?",
-      "What's your special Travel Occasion? pet friendly stay?",
-      "What's your special Travel Occasion? weekend getaway?",
-      "What's your special Travel Occasion? staycation near me?",
-      "What's your special Travel Occasion? road trip stay?",
-      "What's your special Travel Occasion? 1 night stay?",
-      "What's your special Travel Occasion? workation?",
-      "What's your special Travel Occasion? long stay villa?",
-      "What's your special Travel Occasion? wifi resort?",
-      "What's your special Travel Occasion? office team outing?",
-      "What's your special Travel Occasion? treehouse stay?",
-      "What's your special Travel Occasion? camping setup?",
-      "What's your special Travel Occasion? trekking homestay?",
-      "What's your special Travel Occasion? river view resort?",
-      "What's your special Travel Occasion? peaceful stay?",
-      "What's your special Travel Occasion? temple stay?",
-      "What's your special Travel Occasion? pilgrimage hotel?",
-      "What's your special Travel Occasion? heritage stay?"
+      'Enter Travel Occasion',
+      'Enter Office Outing',
+      'Enter Family Trip',
+      'Enter Couple Friendly'
     ];
 
     let placeholderQueue = [];
@@ -328,9 +301,6 @@
         queue.push(chosen);
         previous = chosen;
 
-        if (Math.random() < 0.28 && remaining.length >= 1) {
-          queue.push('Where do you want to go?');
-        }
       }
 
       return queue;
@@ -491,7 +461,7 @@
     });
 
     placeholderQueue = buildPlaceholderQueue();
-    searchInput.setAttribute('placeholder', placeholderQueue.shift() || "What's your special Travel Occasion? honeymoon stays?");
+    searchInput.setAttribute('placeholder', placeholderQueue.shift() || 'Enter Travel Occasion');
     startPlaceholderRotation();
     applyListingFilter();
   })();
