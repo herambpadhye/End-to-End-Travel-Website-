@@ -47,6 +47,11 @@ const listingschema = new Schema({
         default: ""
     },
 
+    amenities: {
+        type: [String],
+        default: []
+    },
+
     // Map coordinates for this particular listing
     coordinates: {
 

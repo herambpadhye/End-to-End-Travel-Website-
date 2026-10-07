@@ -34,6 +34,23 @@
 
         </div>
 
+        <!-- ======================================== -->
+        <!-- LOCATION -->
+        <!-- ======================================== -->
+
+        <div class="form-group">
+
+            <label>Location</label>
+
+            <input
+                name="listing[location]"
+                type="text"
+                required
+            />
+
+            <span class="error-msg"></span>
+
+        </div>
 
         <!-- ======================================== -->
         <!-- DESCRIPTION -->
@@ -51,6 +68,61 @@
             <span class="error-msg"></span>
 
         </div>
+
+        <!-- ======================================== -->
+        <!-- AMENITIES -->
+        <!-- ======================================== -->
+
+        <section class="amenities-section">
+
+            <h3>What this place offers</h3>
+
+            <div class="amenities-group">
+                <h4>Basic Amenities</h4>
+                <div class="amenities-options">
+                    <label><input type="checkbox" name="listing[amenities]" value="Wifi" checked /> Wifi</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Kitchen" checked /> Kitchen</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Free parking" checked /> Free parking</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Hot water" checked /> Hot water</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Bed linen" checked /> Bed linen</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Towels" checked /> Towels</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Toiletries" checked /> Toiletries</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="TV / HDTV" checked /> TV / HDTV</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Washing machine" checked /> Washing machine</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Dining area" checked /> Dining area</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Refrigerator" checked /> Refrigerator</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Microwave" checked /> Microwave</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Electric kettle" checked /> Electric kettle</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Wardrobe / storage" checked /> Wardrobe / storage</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Hangers" checked /> Hangers</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Iron" checked /> Iron</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Clothes drying rack" checked /> Clothes drying rack</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Seating / living area" checked /> Seating / living area</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Dedicated workspace" checked /> Dedicated workspace</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Smoke alarm" checked /> Smoke alarm</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Fire extinguisher" checked /> Fire extinguisher</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="First-aid kit" checked /> First-aid kit</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Exterior security cameras" checked /> Exterior security cameras</label>
+                    <label><input type="checkbox" name="listing[amenities]" value="Private entrance" checked /> Private entrance</label>
+                </div>
+            </div>
+
+            <div class="amenities-group" data-climate="cold" hidden>
+                <h4>Cold Climate Amenities</h4>
+                <div class="amenities-options" data-amenities="cold"></div>
+            </div>
+
+            <div class="amenities-group" data-climate="hot" hidden>
+                <h4>Hot Climate Amenities</h4>
+                <div class="amenities-options" data-amenities="hot"></div>
+            </div>
+
+            <div class="amenities-group" data-climate="monsoon" hidden>
+                <h4>Monsoon Amenities</h4>
+                <div class="amenities-options" data-amenities="monsoon"></div>
+            </div>
+
+        </section>
 
 
         <!-- ======================================== -->
@@ -140,25 +212,6 @@
 
 
         <!-- ======================================== -->
-        <!-- LOCATION -->
-        <!-- ======================================== -->
-
-        <div class="form-group">
-
-            <label>Location</label>
-
-            <input
-                name="listing[location]"
-                type="text"
-                required
-            />
-
-            <span class="error-msg"></span>
-
-        </div>
-
-
-        <!-- ======================================== -->
         <!-- SUBMIT -->
         <!-- ======================================== -->
 
@@ -191,6 +244,143 @@
 
     const imageError =
         document.getElementById("imageError");
+
+    const locationInput =
+        document.querySelector('input[name="listing[location]"]');
+
+    const climateAmenities = {
+        cold: [
+            "Room heater",
+            "Heating system",
+            "Extra blankets",
+            "Warm bedding",
+            "Hot water",
+            "Electric kettle",
+            "Indoor drying facility",
+            "Thermal / insulated windows",
+            "Fireplace / heating stove",
+            "Covered parking"
+        ],
+        hot: [
+            "Air conditioning",
+            "Ceiling fan",
+            "Electric fan",
+            "Swimming pool",
+            "Refrigerator",
+            "Blackout curtains",
+            "Outdoor seating",
+            "Shaded outdoor area",
+            "Drinking water",
+            "Mosquito protection"
+        ],
+        monsoon: [
+            "Covered parking",
+            "Umbrella",
+            "Raincoat / rain gear",
+            "Covered entrance",
+            "Anti-slip flooring / mats",
+            "Clothes drying rack",
+            "Indoor clothes-drying area",
+            "Waterproof luggage / storage area",
+            "Good drainage",
+            "Power backup / generator"
+        ]
+    };
+
+    const climateLocations = {
+        cold: [
+            "manali", "shimla", "gulmarg", "leh", "ladakh", "auli",
+            "mussoorie", "nainital", "srinagar", "darjeeling"
+        ],
+        hot: [
+            "rajasthan", "jaisalmer", "jodhpur", "jaipur", "ahmedabad",
+            "nagpur", "delhi", "agra", "hyderabad"
+        ],
+        monsoon: [
+            "mumbai", "pune", "goa", "kerala", "mangalore", "kochi",
+            "ratnagiri", "konkan", "cherrapunji"
+        ]
+    };
+
+    Object.entries(climateAmenities).forEach(
+        function ([climate, amenities]) {
+            const optionsContainer =
+                document.querySelector(
+                    '[data-amenities="' + climate + '"]'
+                );
+
+            amenities.forEach(
+                function (amenity) {
+                    const label =
+                        document.createElement("label");
+
+                    const checkbox =
+                        document.createElement("input");
+
+                    checkbox.type = "checkbox";
+                    checkbox.name = "listing[amenities]";
+                    checkbox.value = amenity;
+                    checkbox.disabled = true;
+
+                    label.appendChild(checkbox);
+                    label.appendChild(
+                        document.createTextNode(" " + amenity)
+                    );
+                    optionsContainer.appendChild(label);
+                }
+            );
+        }
+    );
+
+    function updateClimateAmenities() {
+        const location =
+            locationInput.value.trim().toLowerCase();
+
+        const climate =
+            Object.entries(climateLocations).find(
+                function ([, locations]) {
+                    return locations.some(
+                        function (keyword) {
+                            return location.includes(keyword);
+                        }
+                    );
+                }
+            );
+
+        const activeClimate =
+            climate ? climate[0] : null;
+
+        document
+            .querySelectorAll(".amenities-group[data-climate]")
+            .forEach(
+                function (section) {
+                    const isActive =
+                        section.dataset.climate === activeClimate;
+
+                    section.hidden = !isActive;
+
+                    section
+                        .querySelectorAll('input[name="listing[amenities]"]')
+                        .forEach(
+                            function (checkbox) {
+                                checkbox.disabled = !isActive;
+                            }
+                        );
+                }
+            );
+    }
+
+    locationInput.addEventListener(
+        "input",
+        updateClimateAmenities
+    );
+
+    locationInput.addEventListener(
+        "change",
+        updateClimateAmenities
+    );
+
+    updateClimateAmenities();
 
 
     // =====================================================

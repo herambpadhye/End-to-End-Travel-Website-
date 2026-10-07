@@ -903,9 +903,29 @@ router.post(
             // CREATE LISTING DATA
             // ========================================
 
+            // FIX:
+            // Amenities are submitted using
+            // name="listing[amenities]" in new.ejs.
+            // Therefore they are available inside
+            // req.body.listing.amenities.
+
+            const submittedAmenities =
+                listingData.amenities;
+
+
+            const amenities =
+                Array.isArray(submittedAmenities)
+                    ? submittedAmenities
+                    : typeof submittedAmenities === "string"
+                        ? [submittedAmenities]
+                        : [];
+
+
             const newListingData = {
 
                 ...listingData,
+
+                amenities,
 
                 host:
                     req.session.userId

@@ -93,6 +93,149 @@
                 <%= listing.description %>
             </p>
 
+            <%
+                const listingAmenities =
+                    Array.isArray(listing.amenities) ? listing.amenities : [];
+
+                function getAmenityIcon(amenity) {
+                    const name = String(amenity).toLowerCase();
+
+                    if (name.includes("wifi")) return "fa-wifi";
+                    if (name.includes("kitchen") || name.includes("dining")) return "fa-utensils";
+                    if (name.includes("parking") || name.includes("car")) return "fa-car";
+                    if (name.includes("pool") || name.includes("swimming")) return "fa-person-swimming";
+                    if (name.includes("lift") || name.includes("elevator")) return "fa-elevator";
+                    if (name.includes("air conditioning") || name.includes("heater") || name.includes("heating") || name.includes("blanket") || name.includes("bedding")) return "fa-snowflake";
+                    if (name.includes("washing") || name.includes("drying") || name.includes("laundry")) return "fa-soap";
+                    if (name.includes("workspace") || name.includes("desk") || name.includes("office")) return "fa-briefcase";
+                    if (name.includes("tv") || name.includes("hdtv") || name.includes("television")) return "fa-tv";
+                    if (name.includes("hanger")) return "fa-shirt";
+                    if (name.includes("iron")) return "fa-shirt";
+                    if (name.includes("refrigerator") || name.includes("fridge") || name.includes("microwave") || name.includes("kettle")) return "fa-kitchen-set";
+                    if (name.includes("camera") || name.includes("security")) return "fa-video";
+                    if (name.includes("hot water") || name.includes("water")) return "fa-droplet";
+                    if (name.includes("fire") || name.includes("smoke")) return "fa-fire-extinguisher";
+                    if (name.includes("bed") || name.includes("linen")) return "fa-bed";
+                    if (name.includes("toiletries") || name.includes("bath")) return "fa-bath";
+                    if (name.includes("entrance") || name.includes("door")) return "fa-door-open";
+                    if (name.includes("umbrella") || name.includes("rain")) return "fa-umbrella";
+
+                    return "fa-check";
+                }
+
+                function getAmenityLabel(amenity) {
+                    const name = String(amenity).trim().toLowerCase();
+
+                    if (name === "free parking") return "Free parking on premises";
+                    if (name === "tv / hdtv") return "43-inch HDTV";
+                    if (name === "exterior security cameras") {
+                        return "Exterior security cameras on property";
+                    }
+
+                    return amenity;
+                }
+            %>
+
+            <% if (listingAmenities.length > 0) { %>
+                <style>
+                    .listing-amenities {
+                        margin: 24px 0;
+                        padding: 20px 0;
+                        border-top: 1px solid #e5e7eb;
+                        border-bottom: 1px solid #e5e7eb;
+                    }
+
+                    .listing-amenities h4,
+                    .amenities-modal-content h4 {
+                        margin: 0 0 16px;
+                        color: #222;
+                    }
+
+                    .listing-amenities-grid,
+                    .amenities-modal-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 14px 22px;
+                    }
+
+                    .listing-amenity,
+                    .amenities-modal-item {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        color: #333;
+                    }
+
+                    .listing-amenity i,
+                    .amenities-modal-item i {
+                        width: 20px;
+                        color: #536175;
+                        text-align: center;
+                    }
+
+                    .amenities-show-all {
+                        margin-top: 18px;
+                        padding: 0;
+                        border: 0;
+                        border-bottom: 1px solid currentColor;
+                        background: none;
+                        color: #222;
+                        font: inherit;
+                        font-weight: 600;
+                        cursor: pointer;
+                    }
+
+                    .amenities-modal {
+                        position: fixed;
+                        inset: 0;
+                        z-index: 2000;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                        background: rgba(0, 0, 0, 0.55);
+                    }
+
+                    .amenities-modal[hidden] {
+                        display: none;
+                    }
+
+                    .amenities-modal-content {
+                        position: relative;
+                        width: min(680px, 100%);
+                        max-height: min(80vh, 720px);
+                        overflow-y: auto;
+                        padding: 28px;
+                        border-radius: 14px;
+                        background: #fff;
+                    }
+
+                    .amenities-modal-close {
+                        position: absolute;
+                        top: 12px;
+                        right: 16px;
+                        padding: 2px 8px;
+                        border: 0;
+                        background: transparent;
+                        color: #222;
+                        font-size: 1.8rem;
+                        line-height: 1;
+                        cursor: pointer;
+                    }
+
+                    @media (max-width: 576px) {
+                        .amenities-modal-content {
+                            padding: 24px 18px;
+                        }
+
+                        .listing-amenities-grid,
+                        .amenities-modal-grid {
+                            gap: 12px;
+                        }
+                    }
+                </style>
+
+            <% } %>
 
             <p class="show-price">
                 &#8377;
@@ -104,6 +247,53 @@
                 <%= listing.location %>
             </p>
 
+            <% if (listingAmenities.length > 0) { %>
+                <section class="listing-amenities" aria-labelledby="listing-amenities-heading">
+                    <h4 id="listing-amenities-heading">What this place offers</h4>
+                    <div class="listing-amenities-grid">
+                        <% listingAmenities.slice(0, 8).forEach(function(amenity) { %>
+                            <div class="listing-amenity">
+                                <i class="fa-solid <%= getAmenityIcon(amenity) %>" aria-hidden="true"></i>
+                                <span><%= getAmenityLabel(amenity) %></span>
+                            </div>
+                        <% }); %>
+                    </div>
+                    <button
+                        type="button"
+                        class="amenities-show-all"
+                        id="show-all-amenities"
+                        aria-haspopup="dialog"
+                        aria-controls="amenities-modal"
+                    >Show all <%= listingAmenities.length %> amenities</button>
+                </section>
+
+                <div
+                    class="amenities-modal"
+                    id="amenities-modal"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="amenities-modal-heading"
+                    hidden
+                >
+                    <div class="amenities-modal-content">
+                        <button
+                            type="button"
+                            class="amenities-modal-close"
+                            id="close-amenities-modal"
+                            aria-label="Close amenities"
+                        >&times;</button>
+                        <h4 id="amenities-modal-heading">What this place offers</h4>
+                        <div class="amenities-modal-grid">
+                            <% listingAmenities.forEach(function(amenity) { %>
+                                <div class="amenities-modal-item">
+                                    <i class="fa-solid <%= getAmenityIcon(amenity) %>" aria-hidden="true"></i>
+                                    <span><%= getAmenityLabel(amenity) %></span>
+                                </div>
+                            <% }); %>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
 
             <!-- ============================= -->
             <!-- Location Map -->
@@ -751,6 +941,53 @@
     <% } %>
 
 </div>
+
+<script>
+    (() => {
+        const amenitiesModal =
+            document.getElementById("amenities-modal");
+        const showAmenitiesButton =
+            document.getElementById("show-all-amenities");
+        const closeAmenitiesButton =
+            document.getElementById("close-amenities-modal");
+
+        if (!amenitiesModal || !showAmenitiesButton || !closeAmenitiesButton) {
+            return;
+        }
+
+        let previousBodyOverflow = "";
+
+        function closeAmenitiesModal() {
+            amenitiesModal.hidden = true;
+            document.body.style.overflow = previousBodyOverflow;
+            showAmenitiesButton.focus();
+        }
+
+        showAmenitiesButton.addEventListener("click", function () {
+            previousBodyOverflow = document.body.style.overflow;
+            amenitiesModal.hidden = false;
+            document.body.style.overflow = "hidden";
+            closeAmenitiesButton.focus();
+        });
+
+        closeAmenitiesButton.addEventListener(
+            "click",
+            closeAmenitiesModal
+        );
+
+        amenitiesModal.addEventListener("click", function (event) {
+            if (event.target === amenitiesModal) {
+                closeAmenitiesModal();
+            }
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && !amenitiesModal.hidden) {
+                closeAmenitiesModal();
+            }
+        });
+    })();
+</script>
 
 
 <!-- ================================= -->
