@@ -1,0 +1,429 @@
+<% layout("layouts/boilerplate") %>
+
+<%
+    const listingId = listing._id.toString();
+    const listingImage =
+        Array.isArray(listing.images) && listing.images.length
+            ? listing.images[0]
+            : listing.image && listing.image.url
+                ? listing.image.url
+                : "";
+    const formatBookingDate = (dateValue) =>
+        new Date(`${dateValue}T00:00:00Z`).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            timeZone: "UTC"
+        });
+    const formatRupees = (amount) =>
+        new Intl.NumberFormat("en-IN", {
+            maximumFractionDigits: 2
+        }).format(amount);
+    const authenticated =
+        typeof currentUser !== "undefined" && Boolean(currentUser);
+    const loginDestination =
+        typeof loginUrl === "string"
+            ? loginUrl
+            : `/users/login?returnTo=${encodeURIComponent(returnTo)}`;
+%>
+
+<main
+    class="booking-confirmation-page"
+    data-listing-id="<%= listingId %>"
+    data-check-in="<%= checkIn %>"
+    data-check-out="<%= checkOut %>"
+    data-adults="<%= adults %>"
+    data-children="<%= children %>"
+    data-pets="<%= pets %>"
+    data-nightly-price="<%= listing.price %>"
+    data-listing-location="<%= listing.location || '' %>"
+    data-booking-return-url="<%= returnTo %>"
+>
+    <header class="booking-page-header">
+        <a
+            class="booking-back-button"
+            href="/listings/<%= listingId %>?checkIn=<%= encodeURIComponent(checkIn) %>&checkOut=<%= encodeURIComponent(checkOut) %>&adults=<%= adults %>&children=<%= children %>&pets=<%= pets %>"
+            aria-label="Back to listing"
+        >
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        </a>
+        <h1 class="booking-page-heading">Confirm and pay</h1>
+    </header>
+
+    <div class="booking-columns">
+        <section class="booking-steps" aria-label="Booking steps">
+            <article class="booking-step-card" id="booking-step-login">
+                <h2 class="booking-step-heading">
+                    <span class="booking-step-number">1</span>
+                    <span>Log in or sign up</span>
+                </h2>
+                <div class="booking-step-content">
+                    <% if (authenticated || isAuthenticated) { %>
+                        <p class="booking-step-complete">
+                            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                            You are logged in and can continue.
+                        </p>
+                        <div class="booking-step-actions">
+                            <a class="booking-continue-button" href="#booking-step-travel">
+                                Continue
+                            </a>
+                        </div>
+                    <% } else { %>
+                        <p>Log in or create an account to continue with your trip.</p>
+                        <div class="booking-step-actions">
+                            <a class="booking-continue-button" href="<%= loginDestination %>">
+                                Continue
+                            </a>
+                        </div>
+                    <% } %>
+                </div>
+            </article>
+
+            <article class="booking-step-card" id="booking-step-travel">
+                <h2 class="booking-step-heading">
+                    <span class="booking-step-number">2</span>
+                    <span>Travel options</span>
+                </h2>
+                <div class="booking-step-content">
+                    <p>Would you like to see travel options to your destination?</p>
+                    <p
+                        class="booking-travel-skipped booking-step-complete"
+                        id="booking-travel-skipped"
+                        hidden
+                    >
+                        Travel options skipped. You can continue with your booking.
+                    </p>
+                    <div class="booking-step-actions" id="booking-travel-actions">
+                        <button
+                            class="booking-travel-yes"
+                            id="booking-travel-yes"
+                            type="button"
+                        >Yes, show travel options</button>
+                        <button
+                            class="booking-travel-no"
+                            id="booking-travel-no"
+                            type="button"
+                            aria-controls="booking-step-payment booking-step-proceed"
+                        >No, continue booking</button>
+                    </div>
+                    <p class="booking-travel-context-note">
+                        You can return to this booking without losing your selections.
+                    </p>
+                </div>
+            </article>
+
+            <article class="booking-step-card" id="booking-step-payment" hidden>
+                <h2 class="booking-step-heading">
+                    <span class="booking-step-number">3</span>
+                    <span>Add a payment method</span>
+                </h2>
+                <div class="booking-step-content">
+                    <details class="booking-payment-details">
+                        <summary>Payment method setup</summary>
+                        <p class="booking-payment-note">
+                            Payment-method setup will be available once payment integration is connected.
+                            No payment details have been collected or saved.
+                        </p>
+                    </details>
+                </div>
+            </article>
+
+            <article class="booking-step-card" id="booking-step-proceed" hidden>
+                <h2 class="booking-step-heading">
+                    <span class="booking-step-number">4</span>
+                    <span>Proceed to payment</span>
+                </h2>
+                <div class="booking-step-content">
+                    <p class="booking-payment-note">
+                        Payment is not available yet. Your booking is not confirmed or paid.
+                    </p>
+                    <div class="booking-step-actions">
+                        <button class="booking-continue-button" type="button" disabled>
+                            Payment unavailable
+                        </button>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <aside class="booking-summary-column" aria-label="Listing and price summary">
+            <section class="booking-listing-summary">
+                <div class="booking-listing-overview">
+                    <% if (listingImage) { %>
+                        <img
+                            class="booking-listing-image"
+                            src="<%= listingImage %>"
+                            alt="<%= listing.title %>"
+                        >
+                    <% } else { %>
+                        <div class="booking-listing-image" aria-hidden="true">
+                            <i class="fa-regular fa-image"></i>
+                        </div>
+                    <% } %>
+                    <div class="booking-listing-information">
+                        <h2 class="booking-listing-title"><%= listing.title %></h2>
+                        <% if (listing.location) { %>
+                            <p class="booking-listing-location"><%= listing.location %></p>
+                        <% } %>
+                    </div>
+                </div>
+
+                <section class="booking-policy" aria-labelledby="booking-policy-heading">
+                    <h3 class="booking-section-heading" id="booking-policy-heading">
+                        Cancellation policy
+                    </h3>
+                    <p>The cancellation policy has not been provided by the host.</p>
+                </section>
+
+                <section class="booking-detail-section" aria-labelledby="booking-dates-heading">
+                    <div class="booking-detail-heading-row">
+                        <div>
+                            <h3 class="booking-section-heading" id="booking-dates-heading">Dates</h3>
+                            <p><%= formatBookingDate(checkIn) %> – <%= formatBookingDate(checkOut) %></p>
+                        </div>
+                        <button
+                            type="button"
+                            class="booking-change-button"
+                            data-booking-change
+                            aria-label="Change dates"
+                        >Change</button>
+                    </div>
+                </section>
+
+                <section class="booking-detail-section" aria-labelledby="booking-guests-heading">
+                    <div class="booking-detail-heading-row">
+                        <div>
+                            <h3 class="booking-section-heading" id="booking-guests-heading">Guests</h3>
+                            <p><%= adults %> <%= adults === 1 ? "adult" : "adults" %></p>
+                            <p><%= children %> <%= children === 1 ? "child" : "children" %></p>
+                            <p><%= pets %> <%= pets === 1 ? "pet" : "pets" %></p>
+                        </div>
+                        <button
+                            type="button"
+                            class="booking-change-button"
+                            data-booking-change
+                            aria-label="Change guests"
+                        >Change</button>
+                    </div>
+                </section>
+            </section>
+
+            <section class="booking-price-breakdown" aria-labelledby="booking-price-heading">
+                <h2 class="booking-section-heading" id="booking-price-heading">Price details</h2>
+                <div class="booking-price-details">
+                    <div class="booking-price-row">
+                        <span>
+                            ₹<%= formatRupees(listing.price) %> ×
+                            <span data-booking-nights><%= nights %> <%= nights === 1 ? "night" : "nights" %></span>
+                        </span>
+                        <span data-booking-subtotal>₹<%= formatRupees(subtotal) %></span>
+                    </div>
+                </div>
+                <div class="booking-total">
+                    <span>Total (INR)</span>
+                    <span>₹<%= formatRupees(subtotal) %></span>
+                </div>
+                <p class="booking-price-disclaimer">
+                    Accommodation subtotal only. No additional charges are included.
+                </p>
+            </section>
+        </aside>
+    </div>
+</main>
+
+<script src="/js/listing-booking.js"></script>
+
+<script>
+    (() => {
+        const bookingPage =
+            document.querySelector(".booking-confirmation-page");
+        const travelYes =
+            document.getElementById("booking-travel-yes");
+        const travelNo =
+            document.getElementById("booking-travel-no");
+        const skippedMessage =
+            document.getElementById("booking-travel-skipped");
+        const travelStep =
+            document.getElementById("booking-step-travel");
+        const paymentStep =
+            document.getElementById("booking-step-payment");
+        const proceedStep =
+            document.getElementById("booking-step-proceed");
+
+        if (!bookingPage || !travelYes || !travelNo) {
+            return;
+        }
+
+        const currentBookingLocation =
+            new URL(window.location.href);
+        const bookingReturnTo =
+            currentBookingLocation.pathname +
+            currentBookingLocation.search +
+            currentBookingLocation.hash;
+        const bookingAssistantStateKey =
+            "bookingAssistantState";
+        const currentBookingUrl =
+            bookingReturnTo;
+        const validatedBookingReturnUrl =
+            new URL(bookingReturnTo, window.location.origin);
+
+        if (validatedBookingReturnUrl.origin !== window.location.origin) {
+            return;
+        }
+
+        function saveBookingAssistantState(state) {
+            try {
+                window.sessionStorage.setItem(
+                    bookingAssistantStateKey,
+                    JSON.stringify(state)
+                );
+            } catch (error) {
+                console.error(
+                    "Unable to save booking assistant state:",
+                    error
+                );
+            }
+        }
+
+        function clearBookingAssistantState() {
+            try {
+                window.sessionStorage.removeItem(
+                    bookingAssistantStateKey
+                );
+            } catch (error) {
+                console.error(
+                    "Unable to clear booking assistant state:",
+                    error
+                );
+            }
+        }
+
+        let savedBookingAssistantState = null;
+
+        try {
+            const serializedState =
+                window.sessionStorage.getItem(bookingAssistantStateKey);
+
+            if (serializedState) {
+                const parsedState = JSON.parse(serializedState);
+
+                if (
+                    parsedState &&
+                    typeof parsedState === "object" &&
+                    typeof parsedState.bookingUrl === "string" &&
+                    (
+                        parsedState.step === "payment" ||
+                        (
+                            parsedState.step === "travel" &&
+                            parsedState.travelReturnPending === true
+                        )
+                    )
+                ) {
+                    savedBookingAssistantState = parsedState;
+                } else {
+                    clearBookingAssistantState();
+                    console.error(
+                        "Stored booking assistant state is invalid."
+                    );
+                }
+            }
+        } catch (error) {
+            clearBookingAssistantState();
+            console.error(
+                "Unable to read booking assistant state:",
+                error
+            );
+        }
+
+        if (
+            savedBookingAssistantState &&
+            savedBookingAssistantState.bookingUrl !== currentBookingUrl
+        ) {
+            clearBookingAssistantState();
+            savedBookingAssistantState = null;
+        }
+
+        const returnedFromTravel =
+            savedBookingAssistantState &&
+            savedBookingAssistantState.step === "travel" &&
+            savedBookingAssistantState.travelReturnPending === true;
+        const resumeAtPayment =
+            savedBookingAssistantState &&
+            (
+                savedBookingAssistantState.step === "payment" ||
+                returnedFromTravel
+            );
+
+        if (returnedFromTravel) {
+            saveBookingAssistantState({
+                bookingUrl: currentBookingUrl,
+                step: "payment"
+            });
+        }
+
+        if (resumeAtPayment) {
+            if (travelStep) {
+                travelStep.hidden = true;
+            }
+            if (paymentStep) {
+                paymentStep.hidden = false;
+            }
+            if (proceedStep) {
+                proceedStep.hidden = false;
+            }
+        }
+
+        bookingPage.addEventListener("click", function (event) {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            const navigationLink =
+                event.target.closest("a[href]");
+
+            if (
+                navigationLink &&
+                !navigationLink.getAttribute("href").startsWith("#")
+            ) {
+                clearBookingAssistantState();
+            }
+        });
+
+        const travelUrl =
+            new URL("/travel", window.location.origin);
+        travelUrl.searchParams.set(
+            "destination",
+            bookingPage.dataset.listingLocation || ""
+        );
+        travelUrl.searchParams.set(
+            "bookingReturnTo",
+            validatedBookingReturnUrl.pathname +
+                validatedBookingReturnUrl.search +
+                validatedBookingReturnUrl.hash
+        );
+
+        travelYes.addEventListener("click", function () {
+            saveBookingAssistantState({
+                bookingUrl: currentBookingUrl,
+                step: "travel",
+                travelReturnPending: true
+            });
+            window.location.assign(travelUrl.toString());
+        });
+
+        travelNo.addEventListener("click", function () {
+            if (skippedMessage) {
+                skippedMessage.hidden = false;
+            }
+            travelNo.disabled = true;
+            travelYes.disabled = true;
+
+            if (paymentStep) {
+                paymentStep.hidden = false;
+            }
+            if (proceedStep) {
+                proceedStep.hidden = false;
+            }
+        });
+    })();
+</script>

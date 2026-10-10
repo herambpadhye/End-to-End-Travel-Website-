@@ -67,6 +67,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const mapText =
         document.getElementById("travel-map-text");
 
+    const requestedDestination =
+        new URLSearchParams(window.location.search).get("destination");
+
+    if (
+        destinationInput &&
+        !destinationInput.value.trim() &&
+        requestedDestination
+    ) {
+        const cleanDestination =
+            requestedDestination.trim();
+
+        if (
+            cleanDestination.length <= 200 &&
+            !/[\u0000-\u001f\u007f]/.test(cleanDestination)
+        ) {
+            destinationInput.value =
+                cleanDestination;
+        }
+    }
+
 
     // =========================================
     // STATE
@@ -578,13 +598,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         const data =
                             await response.json();
 
-                        currentOrigin =
-                            data.address?.city ||
-                            data.address?.town ||
-                            data.address?.municipality ||
-                            data.address?.state_district ||
-                            data.address?.county ||
-                            "Pune";
+                        if (!originWasManuallyEntered) {
+                            currentOrigin =
+                                data.address?.city ||
+                                data.address?.town ||
+                                data.address?.municipality ||
+                                data.address?.state_district ||
+                                data.address?.county ||
+                                "Pune";
+                        }
 
                     } catch (error) {
 
@@ -593,11 +615,13 @@ document.addEventListener("DOMContentLoaded", () => {
                             error
                         );
 
-                        currentOrigin =
-                            "Pune";
+                        if (!originWasManuallyEntered) {
+                            currentOrigin =
+                                "Pune";
+                        }
                     }
 
-                    if (originInput) {
+                    if (originInput && !originWasManuallyEntered) {
 
                         originInput.value =
                             currentOrigin;
@@ -612,6 +636,11 @@ document.addEventListener("DOMContentLoaded", () => {
                      * Location permission denied /
                      * unavailable -> Pune fallback.
                      */
+                    if (originWasManuallyEntered) {
+                        resolve();
+                        return;
+                    }
+
                     currentOrigin =
                         "Pune";
 
@@ -638,6 +667,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             );
         });
+    }
+
+    if (originInput) {
+        const savedOrigin =
+            originInput.value.trim();
+
+        if (savedOrigin) {
+            currentOrigin =
+                savedOrigin;
+            originWasManuallyEntered =
+                true;
+        } else {
+            getUserLocation().catch((error) => {
+                console.error(
+                    "Initial location detection error:",
+                    error
+                );
+            });
+        }
     }
 
 

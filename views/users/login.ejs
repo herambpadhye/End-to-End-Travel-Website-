@@ -17,6 +17,13 @@
 
         <form method="POST" action="/users/login">
 
+            <% if (returnTo) { %>
+                <input
+                    type="hidden"
+                    name="returnTo"
+                    value="<%= returnTo %>"
+                >
+            <% } %>
 
             <div class="form-group">
 
@@ -86,7 +93,7 @@
 
             Don't have an account?
 
-            <a href="/users/signup">
+            <a href="/users/signup<%= returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '' %>">
                 Sign Up
             </a>
 

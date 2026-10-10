@@ -12,6 +12,380 @@
 
   <% } else { %>
 
+    <%
+        const stickyReviewCount =
+            Array.isArray(reviews) ? reviews.length : 0;
+        const stickyAverageRating =
+            stickyReviewCount > 0
+                ? reviews.reduce(
+                    (total, review) => total + Number(review.rating || 0),
+                    0
+                ) / stickyReviewCount
+                : null;
+    %>
+
+    <style>
+        .listing-booking-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            align-items: start;
+            gap: 24px;
+        }
+
+        .listing-summary {
+            min-width: 0;
+        }
+
+        .listing-booking-card {
+            min-width: 0;
+            padding: 22px;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .booking-price-summary {
+            margin-bottom: 18px;
+            color: #222;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .listing-sticky-bar {
+            position: fixed;
+            z-index: 999;
+            top: 60px;
+            right: 0;
+            left: 0;
+            padding: 10px 5%;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+        }
+
+        .listing-sticky-bar[hidden] {
+            display: none;
+        }
+
+        .listing-sticky-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        .listing-sticky-nav {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        .listing-sticky-nav a {
+            flex: 0 0 auto;
+            color: #333;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+
+        .listing-sticky-nav a:hover {
+            color: #ff385c;
+        }
+
+        .listing-sticky-details {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #222;
+            white-space: nowrap;
+        }
+
+        .listing-sticky-price {
+            font-weight: 700;
+        }
+
+        .listing-sticky-nightly,
+        .listing-sticky-rating {
+            color: #555;
+            font-size: 0.85rem;
+        }
+
+        .listing-sticky-submit {
+            flex: 0 0 auto;
+            padding: 11px 18px;
+            border: 0;
+            border-radius: 9px;
+            background: #ff385c;
+            color: #fff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .listing-sticky-submit:hover {
+            background: #e31c5f;
+            transform: translateY(-1px);
+        }
+
+        #photos,
+        #amenities,
+        #location,
+        #reviews {
+            scroll-margin-top: 140px;
+        }
+
+        .booking-date-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            overflow: hidden;
+            border: 1px solid #b8bec8;
+            border-radius: 10px;
+        }
+
+        .booking-date-field {
+            min-width: 0;
+            padding: 10px;
+        }
+
+        .booking-date-field + .booking-date-field {
+            border-left: 1px solid #b8bec8;
+        }
+
+        .booking-date-field label,
+        .booking-guests-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #222;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+
+        .booking-date-field input {
+            width: 100%;
+            min-width: 0;
+            padding: 3px 0;
+            border: 0;
+            background: transparent;
+            color: #333;
+            font: inherit;
+            font-size: 0.85rem;
+        }
+
+        .booking-date-field input:focus {
+            outline: none;
+        }
+
+        .booking-date-row:focus-within,
+        .booking-guests-trigger:focus-visible {
+            outline: 2px solid #536175;
+            outline-offset: 2px;
+        }
+
+        .booking-guests {
+            position: relative;
+            margin-top: 12px;
+        }
+
+        .booking-guests-trigger {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #b8bec8;
+            border-radius: 10px;
+            background: #fff;
+            color: #333;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .booking-guests-trigger:hover {
+            border-color: #536175;
+        }
+
+        .booking-guests-summary {
+            display: block;
+            font-size: 0.9rem;
+        }
+
+        .booking-guest-popover {
+            margin-top: 8px;
+            padding: 8px 14px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .booking-guest-popover[hidden] {
+            display: none;
+        }
+
+        .booking-guest-counter {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 0;
+        }
+
+        .booking-guest-counter + .booking-guest-counter {
+            border-top: 1px solid #eee;
+        }
+
+        .booking-guest-type {
+            color: #222;
+            font-weight: 600;
+        }
+
+        .booking-guest-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .booking-guest-control button {
+            display: inline-flex;
+            width: 32px;
+            height: 32px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #87909d;
+            border-radius: 50%;
+            background: #fff;
+            color: #333;
+            font: inherit;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .booking-guest-control button:disabled {
+            border-color: #d5d8de;
+            color: #a5aab2;
+            cursor: not-allowed;
+        }
+
+        .booking-guest-count {
+            min-width: 18px;
+            color: #222;
+            text-align: center;
+        }
+
+        .booking-submit {
+            width: 100%;
+            margin-top: 16px;
+            padding: 14px 18px;
+            border: 0;
+            border-radius: 10px;
+            background: #ff385c;
+            color: #fff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .booking-submit:hover {
+            background: #e31c5f;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 1100px) {
+            .listing-booking-layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        @media (max-width: 576px) {
+            .show-container {
+                width: 94%;
+            }
+
+            .listing-booking-card {
+                padding: 16px;
+            }
+
+            .listing-sticky-bar {
+                padding: 10px 3%;
+            }
+
+            .listing-sticky-inner {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .listing-sticky-nav {
+                order: 3;
+                width: 100%;
+                overflow-x: auto;
+                gap: 16px;
+                padding: 2px 0;
+            }
+
+            .listing-sticky-details {
+                flex-wrap: wrap;
+                gap: 4px 10px;
+                white-space: normal;
+            }
+
+            .listing-sticky-submit {
+                padding: 10px 14px;
+            }
+
+            .booking-date-field {
+                padding: 9px 7px;
+            }
+        }
+    </style>
+
+    <nav
+        class="listing-sticky-bar"
+        id="listing-sticky-bar"
+        aria-label="Listing summary"
+        aria-hidden="true"
+        hidden
+    >
+        <div class="listing-sticky-inner">
+            <div class="listing-sticky-nav">
+                <a href="#photos">Photos</a>
+                <% if (Array.isArray(listing.amenities) && listing.amenities.length > 0) { %>
+                    <a href="#amenities">Amenities</a>
+                <% } %>
+                <a href="#reviews">Reviews</a>
+                <a href="#location">Location</a>
+            </div>
+            <div class="listing-sticky-details">
+                <span
+                    class="listing-sticky-price"
+                    id="sticky-price-summary"
+                    data-nightly-price="<%= listing.price %>"
+                >
+                    <span class="listing-price-total">&#8377;<%= listing.price.toLocaleString("en-IN") %></span>
+                    <span class="listing-price-night-label">for 1 night</span>
+                </span>
+                <span class="listing-sticky-nightly">
+                    &#8377;<%= listing.price.toLocaleString("en-IN") %> per night
+                </span>
+                <% if (stickyAverageRating !== null) { %>
+                    <span class="listing-sticky-rating">
+                        &#9733; <%= stickyAverageRating.toFixed(1) %> · <%= stickyReviewCount %>
+                        <%= stickyReviewCount === 1 ? "review" : "reviews" %>
+                    </span>
+                <% } %>
+            </div>
+            <button
+                class="listing-sticky-submit"
+                id="listing-sticky-book-now"
+                type="button"
+            >Book Now!</button>
+        </div>
+    </nav>
+
     <div class="show-card">
 
         <%
@@ -33,7 +407,7 @@
             }
         %>
 
-        <div class="listing-image-slider">
+        <div class="listing-image-slider" id="photos">
 
             <% listingImages.forEach(function(image, index) { %>
 
@@ -84,14 +458,113 @@
 
         <div class="show-details">
 
-            <h3 class="show-title">
-                <%= listing.title %>
-            </h3>
+            <div class="listing-booking-layout">
+                <section class="listing-summary" aria-label="Listing summary">
+                    <h3 class="show-title">
+                        <%= listing.title %>
+                    </h3>
 
 
-            <p class="show-description">
-                <%= listing.description %>
-            </p>
+                    <p class="show-description">
+                        <%= listing.description %>
+                    </p>
+
+                    <p class="show-location">
+                        <%= listing.location %>
+                    </p>
+                </section>
+
+                <aside class="listing-booking-card" aria-label="Book this listing">
+                    <form
+                        id="listing-booking-form"
+                        method="GET"
+                        action="/listings/<%= listing._id %>/booking"
+                    >
+                        <p
+                            class="booking-price-summary"
+                            id="booking-price-summary"
+                            data-nightly-price="<%= listing.price %>"
+                        >
+                            <span class="listing-price-total">&#8377;<%= listing.price.toLocaleString("en-IN") %></span>
+                            <span class="listing-price-night-label">for 1 night</span>
+                        </p>
+                        <div class="booking-date-row">
+                            <div class="booking-date-field">
+                                <label for="booking-check-in">CHECK-IN</label>
+                                <input
+                                    id="booking-check-in"
+                                    name="checkIn"
+                                    type="date"
+                                    required
+                                >
+                            </div>
+                            <div class="booking-date-field">
+                                <label for="booking-check-out">CHECKOUT</label>
+                                <input
+                                    id="booking-check-out"
+                                    name="checkOut"
+                                    type="date"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="booking-guests">
+                            <span class="booking-guests-label">GUESTS</span>
+                            <button
+                                id="booking-guests-trigger"
+                                class="booking-guests-trigger"
+                                type="button"
+                                aria-expanded="false"
+                                aria-controls="booking-guest-popover"
+                            >
+                                <span id="booking-guests-summary" class="booking-guests-summary">
+                                    4 guests · 0 pets
+                                </span>
+                            </button>
+
+                            <div
+                                id="booking-guest-popover"
+                                class="booking-guest-popover"
+                                role="group"
+                                aria-label="Choose guests"
+                                hidden
+                            >
+                                <div class="booking-guest-counter" data-guest-type="adults" data-minimum="1">
+                                    <span class="booking-guest-type">Adults</span>
+                                    <span class="booking-guest-control">
+                                        <button type="button" data-guest-change="-1" aria-label="Remove one adult">−</button>
+                                        <span class="booking-guest-count" data-guest-count>4</span>
+                                        <button type="button" data-guest-change="1" aria-label="Add one adult">+</button>
+                                    </span>
+                                </div>
+                                <div class="booking-guest-counter" data-guest-type="children" data-minimum="0">
+                                    <span class="booking-guest-type">Children</span>
+                                    <span class="booking-guest-control">
+                                        <button type="button" data-guest-change="-1" aria-label="Remove one child">−</button>
+                                        <span class="booking-guest-count" data-guest-count>0</span>
+                                        <button type="button" data-guest-change="1" aria-label="Add one child">+</button>
+                                    </span>
+                                </div>
+                                <div class="booking-guest-counter" data-guest-type="pets" data-minimum="0">
+                                    <span class="booking-guest-type">Pets</span>
+                                    <span class="booking-guest-control">
+                                        <button type="button" data-guest-change="-1" aria-label="Remove one pet">−</button>
+                                        <span class="booking-guest-count" data-guest-count>0</span>
+                                        <button type="button" data-guest-change="1" aria-label="Add one pet">+</button>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="adults" value="4" data-guest-value="adults">
+                        <input type="hidden" name="children" value="0" data-guest-value="children">
+                        <input type="hidden" name="pets" value="0" data-guest-value="pets">
+
+                        <button class="booking-submit" type="submit">Book Now!</button>
+                    </form>
+                </aside>
+            </div>
 
             <%
                 const listingAmenities =
@@ -237,18 +710,8 @@
 
             <% } %>
 
-            <p class="show-price">
-                &#8377;
-                <%= listing.price.toLocaleString("en-IN") %>
-            </p>
-
-
-            <p class="show-location">
-                <%= listing.location %>
-            </p>
-
             <% if (listingAmenities.length > 0) { %>
-                <section class="listing-amenities" aria-labelledby="listing-amenities-heading">
+                <section class="listing-amenities" id="amenities" aria-labelledby="listing-amenities-heading">
                     <h4 id="listing-amenities-heading">What this place offers</h4>
                     <div class="listing-amenities-grid">
                         <% listingAmenities.slice(0, 8).forEach(function(amenity) { %>
@@ -306,7 +769,7 @@
             ) { %>
 
 
-                <div class="map-section">
+                <div class="map-section" id="location">
 
                     <h4 class="map-heading">
                         Location on Map
@@ -363,7 +826,7 @@
             <% } else { %>
 
 
-                <div class="map-unavailable">
+                <div class="map-unavailable" id="location">
 
                     <p>
                         Map location is not available for this listing.
@@ -384,7 +847,7 @@
             <!-- REVIEWS / COMMENTS -->
             <!-- ================================= -->
 
-            <div class="reviews-section">
+            <div class="reviews-section" id="reviews">
 
                 <h4 class="reviews-heading">
                     Share Your Experience
@@ -941,6 +1404,105 @@
     <% } %>
 
 </div>
+
+<script src="/js/listing-booking.js"></script>
+
+<script>
+    (() => {
+        const bookingForm =
+            document.getElementById("listing-booking-form");
+        const bookingCard =
+            document.querySelector(".listing-booking-card");
+        const stickyBar =
+            document.getElementById("listing-sticky-bar");
+        const stickyBookNow =
+            document.getElementById("listing-sticky-book-now");
+        const checkInInput =
+            document.getElementById("booking-check-in");
+        const checkOutInput =
+            document.getElementById("booking-check-out");
+        const priceSummaries =
+            document.querySelectorAll("[data-nightly-price]");
+
+        if (
+            !bookingForm ||
+            !bookingCard ||
+            !stickyBar ||
+            !stickyBookNow ||
+            !checkInInput ||
+            !checkOutInput ||
+            !priceSummaries.length
+        ) {
+            return;
+        }
+
+        const nightlyPrice =
+            Number(priceSummaries[0].dataset.nightlyPrice);
+        const currencyFormatter =
+            new Intl.NumberFormat("en-IN", {
+                maximumFractionDigits: 0
+            });
+
+        function updatePriceSummaries() {
+            let nights = 1;
+
+            if (checkInInput.value && checkOutInput.value) {
+                const checkInParts =
+                    checkInInput.value.split("-").map(Number);
+                const checkOutParts =
+                    checkOutInput.value.split("-").map(Number);
+                const checkInTime =
+                    Date.UTC(
+                        checkInParts[0],
+                        checkInParts[1] - 1,
+                        checkInParts[2]
+                    );
+                const checkOutTime =
+                    Date.UTC(
+                        checkOutParts[0],
+                        checkOutParts[1] - 1,
+                        checkOutParts[2]
+                    );
+                const selectedNights =
+                    (checkOutTime - checkInTime) / 86400000;
+
+                if (Number.isInteger(selectedNights) && selectedNights > 0) {
+                    nights = selectedNights;
+                }
+            }
+
+            const totalPrice =
+                currencyFormatter.format(nightlyPrice * nights);
+            const nightLabel = nights === 1 ? "night" : "nights";
+
+            priceSummaries.forEach((summary) => {
+                summary.textContent =
+                    `₹${totalPrice} for ${nights} ${nightLabel}`;
+            });
+        }
+
+        function updateStickyVisibility() {
+            const shouldShow =
+                bookingCard.getBoundingClientRect().bottom <= 60;
+
+            stickyBar.hidden = !shouldShow;
+            stickyBar.setAttribute("aria-hidden", String(!shouldShow));
+        }
+
+        checkInInput.addEventListener("change", updatePriceSummaries);
+        checkOutInput.addEventListener("change", updatePriceSummaries);
+        stickyBookNow.addEventListener("click", function () {
+            bookingForm.requestSubmit();
+        });
+        window.addEventListener("scroll", updateStickyVisibility, {
+            passive: true
+        });
+        window.addEventListener("resize", updateStickyVisibility);
+
+        updatePriceSummaries();
+        updateStickyVisibility();
+    })();
+</script>
 
 <script>
     (() => {

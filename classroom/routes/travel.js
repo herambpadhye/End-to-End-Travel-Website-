@@ -762,9 +762,27 @@
     router.get(
         "/",
         (req, res) => {
+            const destination =
+                typeof req.query.destination === "string"
+                    ? req.query.destination
+                    : "";
+            const requestedBookingReturnTo =
+                req.query.bookingReturnTo;
+            const bookingReturnTo =
+                typeof requestedBookingReturnTo === "string" &&
+                    requestedBookingReturnTo.startsWith("/") &&
+                    !requestedBookingReturnTo.startsWith("//") &&
+                    !requestedBookingReturnTo.includes("\\") &&
+                    !/[\u0000-\u001f\u007f]/.test(requestedBookingReturnTo)
+                    ? requestedBookingReturnTo
+                    : "";
 
             res.render(
-                "travel/index"
+                "travel/index",
+                {
+                    destination,
+                    bookingReturnTo
+                }
             );
         }
     );

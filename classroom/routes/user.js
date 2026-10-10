@@ -133,6 +133,63 @@ function isValidGmail(email) {
 
 }
 
+function getSafeBookingReturnTo(value) {
+
+    if (
+        typeof value !== "string" ||
+        !value.startsWith("/") ||
+        value.startsWith("//") ||
+        value.includes("\\")
+    ) {
+
+        return null;
+
+    }
+
+    try {
+
+        const destination =
+            new URL(value, "http://localhost");
+
+        if (
+            destination.origin !== "http://localhost" ||
+            destination.hash ||
+            !/^\/listings\/[a-f\d]{24}\/booking$/i.test(
+                destination.pathname
+            )
+        ) {
+
+            return null;
+
+        }
+
+        const allowedParameters = new Set([
+            "checkIn",
+            "checkOut",
+            "adults",
+            "children",
+            "pets"
+        ]);
+
+        for (const key of destination.searchParams.keys()) {
+            if (
+                !allowedParameters.has(key) ||
+                destination.searchParams.getAll(key).length !== 1
+            ) {
+                return null;
+            }
+        }
+
+        return destination.pathname + destination.search;
+
+    } catch (error) {
+
+        return null;
+
+    }
+
+}
+
 
 function getProfileNameParts(user) {
 
@@ -233,11 +290,22 @@ function isCloudinarySecureUrl(fileUrl) {
 
 router.get("/signup", (req, res) => {
 
-    if (req.session.userId) {
-        return res.redirect("/listings");
+    const returnTo =
+        getSafeBookingReturnTo(req.query.returnTo);
+
+    if (returnTo) {
+        req.session.bookingReturnTo = returnTo;
+    } else {
+        delete req.session.bookingReturnTo;
     }
 
-    res.render("users/signup.ejs");
+    if (req.session.userId) {
+        return res.redirect(returnTo || "/listings");
+    }
+
+    res.render("users/signup.ejs", {
+        returnTo
+    });
 
 });
 
@@ -248,6 +316,10 @@ router.get("/signup", (req, res) => {
 
 router.post("/signup", async (req, res) => {
 
+    const returnTo =
+        getSafeBookingReturnTo(req.body.returnTo) ||
+        getSafeBookingReturnTo(req.session.bookingReturnTo);
+
     try {
 
         let email = req.body.email;
@@ -256,7 +328,8 @@ router.post("/signup", async (req, res) => {
         if (!email) {
 
             return res.render("users/signup.ejs", {
-                error: "Please enter your Gmail ID."
+                error: "Please enter your Gmail ID.",
+                returnTo
             });
 
         }
@@ -264,7 +337,8 @@ router.post("/signup", async (req, res) => {
         if (!password) {
 
             return res.render("users/signup.ejs", {
-                error: "Please enter a password."
+                error: "Please enter a password.",
+                returnTo
             });
 
         }
@@ -274,7 +348,8 @@ router.post("/signup", async (req, res) => {
         if (!isValidGmail(email)) {
 
             return res.render("users/signup.ejs", {
-                error: "Please enter a valid Gmail ID ending with @gmail.com."
+                error: "Please enter a valid Gmail ID ending with @gmail.com.",
+                returnTo
             });
 
         }
@@ -286,7 +361,8 @@ router.post("/signup", async (req, res) => {
         if (existingUser) {
 
             return res.render("users/signup.ejs", {
-                error: "This Gmail ID is already registered. Please log in."
+                error: "This Gmail ID is already registered. Please log in.",
+                returnTo
             });
 
         }
@@ -301,15 +377,17 @@ router.post("/signup", async (req, res) => {
         await newUser.save();
 
         req.session.userId = newUser._id;
+        delete req.session.bookingReturnTo;
 
-        res.redirect("/listings");
+        res.redirect(returnTo || "/listings");
 
     } catch (error) {
 
         console.log(error);
 
         res.render("users/signup.ejs", {
-            error: "Unable to create account. Please try again."
+            error: "Unable to create account. Please try again.",
+            returnTo
         });
 
     }
@@ -323,11 +401,18 @@ router.post("/signup", async (req, res) => {
 
 router.get("/login", (req, res) => {
 
+    const returnTo =
+        getSafeBookingReturnTo(req.query.returnTo) ||
+        getSafeBookingReturnTo(req.session.bookingReturnTo);
+
     if (req.session.userId) {
-        return res.redirect("/listings");
+        delete req.session.bookingReturnTo;
+        return res.redirect(returnTo || "/listings");
     }
 
-    res.render("users/login.ejs");
+    res.render("users/login.ejs", {
+        returnTo
+    });
 
 });
 
@@ -338,6 +423,10 @@ router.get("/login", (req, res) => {
 
 router.post("/login", async (req, res) => {
 
+    const returnTo =
+        getSafeBookingReturnTo(req.body.returnTo) ||
+        getSafeBookingReturnTo(req.session.bookingReturnTo);
+
     try {
 
         let email = req.body.email;
@@ -347,7 +436,8 @@ router.post("/login", async (req, res) => {
         if (!email) {
 
             return res.render("users/login.ejs", {
-                error: "Please enter your Gmail ID."
+                error: "Please enter your Gmail ID.",
+                returnTo
             });
 
         }
@@ -355,7 +445,8 @@ router.post("/login", async (req, res) => {
         if (!password) {
 
             return res.render("users/login.ejs", {
-                error: "Please enter your password."
+                error: "Please enter your password.",
+                returnTo
             });
 
         }
@@ -365,7 +456,8 @@ router.post("/login", async (req, res) => {
         if (!isValidGmail(email)) {
 
             return res.render("users/login.ejs", {
-                error: "Please enter a valid Gmail ID ending with @gmail.com."
+                error: "Please enter a valid Gmail ID ending with @gmail.com.",
+                returnTo
             });
 
         }
@@ -377,7 +469,8 @@ router.post("/login", async (req, res) => {
         if (!user) {
 
             return res.render("users/login.ejs", {
-                error: "No account found with this Gmail ID. Please sign up first."
+                error: "No account found with this Gmail ID. Please sign up first.",
+                returnTo
             });
 
         }
@@ -390,7 +483,8 @@ router.post("/login", async (req, res) => {
         if (!passwordMatch) {
 
             return res.render("users/login.ejs", {
-                error: "Incorrect password. Please try again."
+                error: "Incorrect password. Please try again.",
+                returnTo
             });
 
         }
@@ -399,21 +493,24 @@ router.post("/login", async (req, res) => {
         if (hostLogin && !user.isHost) {
 
             return res.render("users/login.ejs", {
-                error: "You are not registered as a host. Please click 'Become a Host' first."
+                error: "You are not registered as a host. Please click 'Become a Host' first.",
+                returnTo
             });
 
         }
 
         req.session.userId = user._id;
+        delete req.session.bookingReturnTo;
 
-        res.redirect("/listings");
+        res.redirect(returnTo || "/listings");
 
     } catch (error) {
 
         console.log(error);
 
         res.render("users/login.ejs", {
-            error: "Unable to log in. Please try again."
+            error: "Unable to log in. Please try again.",
+            returnTo
         });
 
     }

@@ -590,6 +590,212 @@ router.delete(
 // ========================================
 
 router.get(
+    "/:id/booking",
+
+    wrapAsync(
+        async (
+            req,
+            res
+        ) => {
+
+            const { id } =
+                req.params;
+
+            if (!/^[a-f\d]{24}$/i.test(id)) {
+
+                throw new ExpressError(
+                    404,
+                    "Listing Not Found"
+                );
+
+            }
+
+            function getQueryValue(name) {
+                const value = req.query[name];
+                return typeof value === "string" ? value : "";
+            }
+
+            function isValidBookingDate(value) {
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                    return false;
+                }
+
+                const [year, month, day] =
+                    value.split("-").map(Number);
+                const date =
+                    new Date(Date.UTC(year, month - 1, day));
+
+                return (
+                    date.getUTCFullYear() === year &&
+                    date.getUTCMonth() === month - 1 &&
+                    date.getUTCDate() === day
+                );
+            }
+
+            function parseGuestCount(name) {
+                const value = getQueryValue(name);
+
+                if (!/^\d+$/.test(value)) {
+                    throw new ExpressError(
+                        400,
+                        `Please provide a valid ${name} count.`
+                    );
+                }
+
+                const count = Number(value);
+
+                if (!Number.isSafeInteger(count)) {
+                    throw new ExpressError(
+                        400,
+                        `Please provide a valid ${name} count.`
+                    );
+                }
+
+                return count;
+            }
+
+            const checkIn =
+                getQueryValue("checkIn");
+            const checkOut =
+                getQueryValue("checkOut");
+
+            if (
+                !isValidBookingDate(checkIn) ||
+                !isValidBookingDate(checkOut)
+            ) {
+                throw new ExpressError(
+                    400,
+                    "Please select valid check-in and checkout dates."
+                );
+            }
+
+            const [checkInYear, checkInMonth, checkInDay] =
+                checkIn.split("-").map(Number);
+            const [checkOutYear, checkOutMonth, checkOutDay] =
+                checkOut.split("-").map(Number);
+            const checkInDate =
+                new Date(checkInYear, checkInMonth - 1, checkInDay);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (checkInDate < today) {
+                throw new ExpressError(
+                    400,
+                    "Check-in cannot be in the past."
+                );
+            }
+
+            const checkInTime =
+                Date.UTC(checkInYear, checkInMonth - 1, checkInDay);
+            const checkOutTime =
+                Date.UTC(checkOutYear, checkOutMonth - 1, checkOutDay);
+            const nights =
+                (checkOutTime - checkInTime) / 86400000;
+
+            if (!Number.isInteger(nights) || nights < 1) {
+                throw new ExpressError(
+                    400,
+                    "Checkout must be after check-in."
+                );
+            }
+
+            const adults =
+                parseGuestCount("adults");
+            const children =
+                parseGuestCount("children");
+            const pets =
+                parseGuestCount("pets");
+
+            if (adults < 1) {
+                throw new ExpressError(
+                    400,
+                    "At least one adult is required."
+                );
+            }
+
+            if (children < 0 || pets < 0) {
+                throw new ExpressError(
+                    400,
+                    "Children and pets must be non-negative."
+                );
+            }
+
+            if (adults + children > 16) {
+                throw new ExpressError(
+                    400,
+                    "The total number of adults and children cannot exceed 16."
+                );
+            }
+
+            if (pets > 10) {
+                throw new ExpressError(
+                    400,
+                    "The number of pets cannot exceed 10."
+                );
+            }
+
+            const bookingUrl =
+                new URL(
+                    `/listings/${id}/booking`,
+                    "http://localhost"
+                );
+            bookingUrl.searchParams.set("checkIn", checkIn);
+            bookingUrl.searchParams.set("checkOut", checkOut);
+            bookingUrl.searchParams.set("adults", String(adults));
+            bookingUrl.searchParams.set("children", String(children));
+            bookingUrl.searchParams.set("pets", String(pets));
+
+            const listing =
+                await Listing.findById(id);
+
+            if (!listing) {
+                throw new ExpressError(
+                    404,
+                    "Listing Not Found"
+                );
+            }
+
+            const nightlyPrice =
+                Number(listing.price);
+
+            if (!Number.isFinite(nightlyPrice) || nightlyPrice < 0) {
+                throw new ExpressError(
+                    500,
+                    "Listing price is unavailable."
+                );
+            }
+
+            const returnTo =
+                bookingUrl.pathname + bookingUrl.search;
+            const loginUrl =
+                `/users/login?returnTo=${encodeURIComponent(returnTo)}`;
+            const signupUrl =
+                `/users/signup?returnTo=${encodeURIComponent(returnTo)}`;
+
+            res.render(
+                "listings/booking.ejs",
+                {
+                    listing,
+                    checkIn,
+                    checkOut,
+                    adults,
+                    children,
+                    pets,
+                    nights,
+                    subtotal: nightlyPrice * nights,
+                    returnTo,
+                    loginUrl,
+                    signupUrl,
+                    isAuthenticated: Boolean(req.session.userId)
+                }
+            );
+
+        }
+    )
+);
+
+
+router.get(
     "/:id",
 
     wrapAsync(

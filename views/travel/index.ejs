@@ -2,6 +2,14 @@
 
 <div class="travel-page">
 
+    <a
+        class="travel-booking-return"
+        href="<%= bookingReturnTo || '/' %>"
+        aria-label="<%= bookingReturnTo ? 'Return to booking' : 'Back to home' %>"
+    >
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+    </a>
+
     <!-- ========================================================= -->
     <!-- LEAFLET CSS                                               -->
     <!-- ========================================================= -->
@@ -84,6 +92,7 @@
                     id="travel-destination"
                     placeholder="Where do you want to go?"
                     autocomplete="off"
+                    value="<%= destination || '' %>"
                 >
 
                 <button
