@@ -820,9 +820,29 @@ router.get(
                 throw new ExpressError(
                     404,
                     "Listing Not Found"
+
                 );
 
             }
+
+            const nearbyOriginLatitude =
+                Number(listing.coordinates && listing.coordinates.lat);
+            const nearbyOriginLongitude =
+                Number(listing.coordinates && listing.coordinates.lng);
+            const hasValidNearbyOrigin =
+                listing.coordinates &&
+                listing.coordinates.lat !== null &&
+                listing.coordinates.lat !== undefined &&
+                String(listing.coordinates.lat).trim() !== "" &&
+                listing.coordinates.lng !== null &&
+                listing.coordinates.lng !== undefined &&
+                String(listing.coordinates.lng).trim() !== "" &&
+                Number.isFinite(nearbyOriginLatitude) &&
+                nearbyOriginLatitude >= -90 &&
+                nearbyOriginLatitude <= 90 &&
+                Number.isFinite(nearbyOriginLongitude) &&
+                nearbyOriginLongitude >= -180 &&
+                nearbyOriginLongitude <= 180;
 
 
             // ========================================
@@ -884,6 +904,136 @@ router.get(
                 .sort({
                     createdAt: -1
                 });
+
+            let nearbyListings = [];
+
+            if (hasValidNearbyOrigin) {
+                const listingsWithCoordinates =
+                    await Listing.find(
+                        {
+                            _id: { $ne: listing._id }
+                        },
+                        {
+                            title: 1,
+                            images: 1,
+                            image: 1,
+                            price: 1,
+                            location: 1,
+                            coordinates: 1
+                        }
+                    ).lean();
+
+                const toRadians =
+                    degrees => degrees * Math.PI / 180;
+                const earthRadiusKm = 6371.0088;
+
+                nearbyListings =
+                    listingsWithCoordinates
+                        .map(nearbyListing => {
+                            const latitude =
+                                Number(
+                                    nearbyListing.coordinates &&
+                                    nearbyListing.coordinates.lat
+                                );
+                            const longitude =
+                                Number(
+                                    nearbyListing.coordinates &&
+                                    nearbyListing.coordinates.lng
+                                );
+                            const hasValidCoordinates =
+                                nearbyListing.coordinates &&
+                                nearbyListing.coordinates.lat !== null &&
+                                nearbyListing.coordinates.lat !== undefined &&
+                                String(nearbyListing.coordinates.lat).trim() !== "" &&
+                                nearbyListing.coordinates.lng !== null &&
+                                nearbyListing.coordinates.lng !== undefined &&
+                                String(nearbyListing.coordinates.lng).trim() !== "" &&
+                                Number.isFinite(latitude) &&
+                                latitude >= -90 &&
+                                latitude <= 90 &&
+                                Number.isFinite(longitude) &&
+                                longitude >= -180 &&
+                                longitude <= 180;
+
+                            if (!hasValidCoordinates) {
+                                return null;
+                            }
+
+                            const latitudeDifference =
+                                toRadians(latitude - nearbyOriginLatitude);
+                            const longitudeDifference =
+                                toRadians(longitude - nearbyOriginLongitude);
+                            const haversine =
+                                Math.min(
+                                    1,
+                                    Math.sin(latitudeDifference / 2) ** 2 +
+                                    Math.cos(toRadians(nearbyOriginLatitude)) *
+                                    Math.cos(toRadians(latitude)) *
+                                    Math.sin(longitudeDifference / 2) ** 2
+                                );
+                            const distanceKm =
+                                2 *
+                                earthRadiusKm *
+                                Math.atan2(
+                                    Math.sqrt(haversine),
+                                    Math.sqrt(1 - haversine)
+                                );
+
+                            if (distanceKm < 5) {
+                                return null;
+                            }
+
+                            return {
+                                ...nearbyListing,
+                                distanceKm
+                            };
+                        })
+                        .filter(Boolean)
+                        .sort(
+                            (first, second) =>
+                                first.distanceKm - second.distanceKm
+                        )
+                        .slice(0, 10);
+
+                if (nearbyListings.length) {
+                    const ratingSummaries =
+                        await Review.aggregate([
+                            {
+                                $match: {
+                                    listing: {
+                                        $in: nearbyListings.map(item => item._id)
+                                    }
+                                }
+                            },
+                            {
+                                $group: {
+                                    _id: "$listing",
+                                    rating: { $avg: "$rating" },
+                                    reviewCount: { $sum: 1 }
+                                }
+                            }
+                        ]);
+                    const ratingsByListingId =
+                        new Map(
+                            ratingSummaries.map(summary => [
+                                String(summary._id),
+                                {
+                                    rating: summary.rating,
+                                    reviewCount: summary.reviewCount
+                                }
+                            ])
+                        );
+
+                    nearbyListings =
+                        nearbyListings.map(item => ({
+                            ...item,
+                            ...(ratingsByListingId.get(String(item._id)) || {
+                                rating: null,
+                                reviewCount: 0
+                            })
+                        }));
+                }
+            }
 
 
             // ========================================
@@ -1000,6 +1150,8 @@ router.get(
 
                     reviews,
 
+                    nearbyListings,
+
                     listingPostedDate,
 
                     hostWhatsAppLink,
@@ -1061,6 +1213,85 @@ router.post(
                     "/listings/new"
                 );
 
+            }
+
+            function getLocationText(field, label, maxLength) {
+                const value = listingData[field];
+
+                if (
+                    typeof value !== "string" ||
+                    !value.trim() ||
+                    value.length > maxLength ||
+                    /[\u0000-\u001f\u007f]/.test(value)
+                ) {
+                    throw new ExpressError(
+                        400,
+                        `Please provide a valid ${label}.`
+                    );
+                }
+
+                return value.trim();
+            }
+
+            const propertyName =
+                getLocationText("propertyName", "property name", 200);
+            const landmark =
+                getLocationText("landmark", "nearby landmark", 200);
+            const locality =
+                getLocationText("locality", "locality", 200);
+            const city =
+                getLocationText("city", "city", 100);
+            const state =
+                getLocationText("state", "state", 100);
+            const pincode =
+                getLocationText("pinCode", "PIN code", 12);
+            const location =
+                getLocationText("location", "location", 200);
+            const country =
+                getLocationText("country", "country", 100);
+
+            if (
+                pincode.length < 3 ||
+                !/^[a-z\d][a-z\d -]*[a-z\d]$/i.test(pincode) ||
+                !/\d/.test(pincode)
+            ) {
+                throw new ExpressError(
+                    400,
+                    "Please provide a valid PIN code."
+                );
+            }
+
+            const submittedCoordinates =
+                listingData.coordinates;
+            const latitudeValue =
+                submittedCoordinates &&
+                typeof submittedCoordinates.lat === "string"
+                    ? submittedCoordinates.lat.trim()
+                    : "";
+            const longitudeValue =
+                submittedCoordinates &&
+                typeof submittedCoordinates.lng === "string"
+                    ? submittedCoordinates.lng.trim()
+                    : "";
+            const latitude =
+                Number(latitudeValue);
+            const longitude =
+                Number(longitudeValue);
+
+            if (
+                !latitudeValue ||
+                !longitudeValue ||
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                latitude < -90 ||
+                latitude > 90 ||
+                longitude < -180 ||
+                longitude > 180
+            ) {
+                throw new ExpressError(
+                    400,
+                    "Please select a valid property location on the map."
+                );
             }
 
 
@@ -1131,6 +1362,19 @@ router.post(
 
                 ...listingData,
 
+                propertyName,
+                landmark,
+                locality,
+                city,
+                state,
+                pincode,
+                location,
+                country,
+                coordinates: {
+                    lat: latitude,
+                    lng: longitude
+                },
+
                 amenities,
 
                 host:
@@ -1197,60 +1441,6 @@ router.post(
 
             res.redirect(
                 "/listings"
-            );
-
-
-            // ========================================
-            // MAP COORDINATES IN BACKGROUND
-            // ========================================
-
-            setImmediate(
-                () => {
-
-                    getCoordinates(
-                        listingData.location,
-                        listingData.country
-                    )
-
-                    .then(
-                        async coordinates => {
-
-                            if (
-                                coordinates
-                            ) {
-
-                                await Listing.findByIdAndUpdate(
-
-                                    newListing._id,
-
-                                    {
-                                        coordinates
-                                    },
-
-                                    {
-                                        runValidators:
-                                            true
-                                    }
-
-                                );
-
-                            }
-
-                        }
-                    )
-
-                    .catch(
-                        error => {
-
-                            console.log(
-                                "Map location error:",
-                                error.message
-                            );
-
-                        }
-                    );
-
-                }
             );
 
         }
@@ -1380,6 +1570,16 @@ router.put(
                     id
                 );
 
+            if (
+                existingListing &&
+                existingListing.host &&
+                existingListing.host.toString() !==
+                    String(res.locals.currentUser._id)
+            ) {
+                return res.redirect(
+                    `/listings/${id}`
+                );
+            }
 
             if (!existingListing) {
 
@@ -1390,30 +1590,127 @@ router.put(
 
             }
 
-
-            // ========================================
-            // UPDATE COORDINATES
-            // ========================================
-
-            let coordinates =
-                null;
-
-
-            try {
-
-                coordinates =
-                    await getCoordinates(
-                        listingData.location,
-                        listingData.country
-                    );
-
-            } catch (error) {
-
-                console.log(
-                    "Map location error:",
-                    error.message
+            if (
+                !listingData ||
+                typeof listingData !== "object" ||
+                Array.isArray(listingData)
+            ) {
+                throw new ExpressError(
+                    400,
+                    "Listing details are required."
                 );
+            }
 
+            function sanitizeLocationText(field, label, maxLength) {
+                if (!Object.prototype.hasOwnProperty.call(listingData, field)) {
+                    return undefined;
+                }
+
+                const value = listingData[field];
+
+                if (
+                    typeof value !== "string" ||
+                    value.length > maxLength ||
+                    /[\u0000-\u001f\u007f]/.test(value)
+                ) {
+                    throw new ExpressError(
+                        400,
+                        `Please provide a valid ${label}.`
+                    );
+                }
+
+                return value.trim();
+            }
+
+            const locationFields = {
+                propertyName:
+                    sanitizeLocationText("propertyName", "property name", 200),
+                landmark:
+                    sanitizeLocationText("landmark", "landmark", 200),
+                locality:
+                    sanitizeLocationText("locality", "locality", 200),
+                city:
+                    sanitizeLocationText("city", "city", 100),
+                state:
+                    sanitizeLocationText("state", "state", 100)
+            };
+            const submittedPincode =
+                Object.prototype.hasOwnProperty.call(listingData, "pincode")
+                    ? sanitizeLocationText("pincode", "PIN code", 12)
+                    : sanitizeLocationText("pinCode", "PIN code", 12);
+
+            if (
+                submittedPincode &&
+                (
+                    submittedPincode.length < 3 ||
+                    !/^[a-z\d][a-z\d -]*[a-z\d]$/i.test(submittedPincode) ||
+                    !/\d/.test(submittedPincode)
+                )
+            ) {
+                throw new ExpressError(
+                    400,
+                    "Please provide a valid PIN code."
+                );
+            }
+
+            const coordinateFields =
+                listingData.coordinates;
+            let coordinates =
+                existingListing.coordinates;
+
+            if (
+                coordinateFields !== undefined &&
+                (
+                    !coordinateFields ||
+                    typeof coordinateFields !== "object" ||
+                    Array.isArray(coordinateFields)
+                )
+            ) {
+                throw new ExpressError(
+                    400,
+                    "Please provide valid property coordinates."
+                );
+            }
+
+            if (coordinateFields) {
+                const latitudeValue =
+                    typeof coordinateFields.lat === "string"
+                        ? coordinateFields.lat.trim()
+                        : "";
+                const longitudeValue =
+                    typeof coordinateFields.lng === "string"
+                        ? coordinateFields.lng.trim()
+                        : "";
+                const hasLatitude =
+                    latitudeValue !== "";
+                const hasLongitude =
+                    longitudeValue !== "";
+
+                if (hasLatitude || hasLongitude) {
+                    const latitude = Number(latitudeValue);
+                    const longitude = Number(longitudeValue);
+
+                    if (
+                        !hasLatitude ||
+                        !hasLongitude ||
+                        !Number.isFinite(latitude) ||
+                        !Number.isFinite(longitude) ||
+                        latitude < -90 ||
+                        latitude > 90 ||
+                        longitude < -180 ||
+                        longitude > 180
+                    ) {
+                        throw new ExpressError(
+                            400,
+                            "Please provide valid property coordinates."
+                        );
+                    }
+
+                    coordinates = {
+                        lat: latitude,
+                        lng: longitude
+                    };
+                }
             }
 
 
@@ -1425,12 +1722,22 @@ router.put(
 
                 ...listingData,
 
-                coordinates:
-                    coordinates ||
-                    existingListing.coordinates ||
-                    undefined
+                ...Object.fromEntries(
+                    Object.entries(locationFields).filter(
+                        ([, value]) => value !== undefined
+                    )
+                ),
+
+                ...(submittedPincode !== undefined
+                    ? { pincode: submittedPincode }
+                    : {}),
+
+                coordinates,
+                host: existingListing.host
 
             };
+
+            delete updateData.pinCode;
 
 
             // ========================================

@@ -187,6 +187,114 @@
 
         </div>
 
+        <div class="form-group">
+            <label>Property name</label>
+            <input
+                type="text"
+                name="listing[propertyName]"
+                value="<%= listing.propertyName || '' %>"
+            >
+            <span class="error-msg"></span>
+        </div>
+
+        <div class="form-group">
+            <label>Nearby landmark</label>
+            <input
+                type="text"
+                name="listing[landmark]"
+                value="<%= listing.landmark || '' %>"
+            >
+            <span class="error-msg"></span>
+        </div>
+
+        <div class="form-group">
+            <label>Locality / area</label>
+            <input
+                type="text"
+                name="listing[locality]"
+                value="<%= listing.locality || '' %>"
+            >
+            <span class="error-msg"></span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>City</label>
+                <input
+                    type="text"
+                    name="listing[city]"
+                    value="<%= listing.city || '' %>"
+                >
+                <span class="error-msg"></span>
+            </div>
+
+            <div class="form-group">
+                <label>State</label>
+                <input
+                    type="text"
+                    name="listing[state]"
+                    value="<%= listing.state || '' %>"
+                >
+                <span class="error-msg"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>PIN code</label>
+            <input
+                type="text"
+                name="listing[pincode]"
+                value="<%= listing.pincode || '' %>"
+                inputmode="numeric"
+                autocomplete="postal-code"
+            >
+            <span class="error-msg"></span>
+            <button
+                type="button"
+                class="submit-btn edit-search-btn"
+                id="edit-search-location"
+            >
+                Search
+            </button>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Latitude</label>
+                <input
+                    type="number"
+                    name="listing[coordinates][lat]"
+                    value="<%= listing.coordinates && listing.coordinates.lat != null ? listing.coordinates.lat : '' %>"
+                    step="any"
+                >
+                <span class="error-msg"></span>
+            </div>
+
+            <div class="form-group">
+                <label>Longitude</label>
+                <input
+                    type="number"
+                    name="listing[coordinates][lng]"
+                    value="<%= listing.coordinates && listing.coordinates.lng != null ? listing.coordinates.lng : '' %>"
+                    step="any"
+                >
+                <span class="error-msg"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <small
+                id="listing-location-status"
+                role="status"
+                aria-live="polite"
+            ></small>
+            <div
+                id="listing-location-map"
+                role="application"
+                aria-label="Select the exact property location"
+                style="height: 360px; width: 100%;"
+            ></div>
+        </div>
 
         <button
             type="submit"
@@ -198,9 +306,429 @@
     </form>
 
 </div>
-
+</div>
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+
+    const editAddressFields = {
+        location:
+            document.querySelector('input[name="listing[location]"]'),
+        propertyName:
+            document.querySelector('input[name="listing[propertyName]"]'),
+        landmark:
+            document.querySelector('input[name="listing[landmark]"]'),
+        locality:
+            document.querySelector('input[name="listing[locality]"]'),
+        city:
+            document.querySelector('input[name="listing[city]"]'),
+        state:
+            document.querySelector('input[name="listing[state]"]'),
+        country:
+            document.querySelector('input[name="listing[country]"]'),
+        postalCode:
+            document.querySelector('input[name="listing[pincode]"]')
+    };
+    const editLatitudeInput =
+        document.querySelector('input[name="listing[coordinates][lat]"]');
+    const editLongitudeInput =
+        document.querySelector('input[name="listing[coordinates][lng]"]');
+    const editLocationStatus =
+        document.getElementById("listing-location-status");
+    const editSearchButton =
+        document.getElementById("edit-search-location");
+    const manuallyEditedAddressFields = new Set();
+
+    Object.values(editAddressFields).forEach(function (input) {
+        if (input) {
+            input.addEventListener("input", function (event) {
+                if (event.isTrusted) {
+                    manuallyEditedAddressFields.add(input);
+                }
+            });
+        }
+    });
+
+    function showEditLocationStatus(message) {
+        if (editLocationStatus) {
+            editLocationStatus.textContent = message;
+        }
+    }
+
+    if (
+        typeof L !== "undefined" &&
+        document.getElementById("listing-location-map") &&
+        editLatitudeInput &&
+        editLongitudeInput
+    ) {
+        const editMapElement =
+            document.getElementById("listing-location-map");
+        const editMap =
+            L.map(editMapElement).setView([20, 0], 2);
+
+        L.tileLayer(
+            "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                maxZoom: 19,
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+            }
+        ).addTo(editMap);
+
+        let editMarker = null;
+        let forwardLookupId = 0;
+        let reverseLookupId = 0;
+        let forwardLookupController = null;
+        let applyingReverseSuggestions = false;
+
+        function readCoordinates() {
+            const latitude = Number(editLatitudeInput.value);
+            const longitude = Number(editLongitudeInput.value);
+
+            if (
+                editLatitudeInput.value.trim() === "" ||
+                editLongitudeInput.value.trim() === "" ||
+                !Number.isFinite(latitude) ||
+                latitude < -90 ||
+                latitude > 90 ||
+                !Number.isFinite(longitude) ||
+                longitude < -180 ||
+                longitude > 180
+            ) {
+                return null;
+            }
+
+            return { latitude, longitude };
+        }
+
+        function setEditMarker(latitude, longitude, updateInputs = true) {
+            if (editMarker) {
+                editMarker.setLatLng([latitude, longitude]);
+            } else {
+                editMarker =
+                    L.marker([latitude, longitude], {
+                        draggable: true
+                    }).addTo(editMap);
+
+                editMarker.on("dragstart", function () {
+                    reverseLookupId += 1;
+                    invalidateForwardLookup();
+                });
+                editMarker.on("dragend", function () {
+                    const position = editMarker.getLatLng();
+                    updateEditCoordinates(position.lat, position.lng);
+                    reverseGeocodeEditLocation(position.lat, position.lng);
+                });
+            }
+
+            if (updateInputs) {
+                updateEditCoordinates(latitude, longitude);
+            }
+        }
+
+        function updateEditCoordinates(latitude, longitude) {
+            editLatitudeInput.value = latitude.toFixed(6);
+            editLongitudeInput.value = longitude.toFixed(6);
+        }
+
+        function invalidateForwardLookup() {
+            forwardLookupId += 1;
+
+            if (forwardLookupController) {
+                forwardLookupController.abort();
+                forwardLookupController = null;
+            }
+
+            editSearchButton.disabled = false;
+            editSearchButton.textContent = "Search";
+            editSearchButton.setAttribute("aria-busy", "false");
+        }
+
+        function buildEditSearchAddress() {
+            return [
+                editAddressFields.landmark.value.trim(),
+                editAddressFields.locality.value.trim(),
+                editAddressFields.city.value.trim(),
+                editAddressFields.state.value.trim(),
+                editAddressFields.country.value.trim(),
+                editAddressFields.postalCode.value.trim()
+            ]
+                .filter(Boolean)
+                .join(", ");
+        }
+
+        function hasEnoughAddressDetails() {
+            return Boolean(
+                editAddressFields.country.value.trim() &&
+                editAddressFields.city.value.trim() &&
+                (
+                    editAddressFields.landmark.value.trim() ||
+                    editAddressFields.locality.value.trim() ||
+                    editAddressFields.state.value.trim() ||
+                    editAddressFields.postalCode.value.trim()
+                )
+            );
+        }
+
+        function suggestEditAddressField(fieldName, value) {
+            const input = editAddressFields[fieldName];
+
+            if (
+                input &&
+                value &&
+                !input.value.trim() &&
+                !manuallyEditedAddressFields.has(input)
+            ) {
+                input.value = value;
+            }
+        }
+
+        async function reverseGeocodeEditLocation(latitude, longitude) {
+            const lookupId = ++reverseLookupId;
+
+            showEditLocationStatus(
+                "Looking up nearby address details..."
+            );
+
+            try {
+                const response = await fetch(
+                    `/travel/reverse-geocode?latitude=${encodeURIComponent(latitude)}` +
+                    `&longitude=${encodeURIComponent(longitude)}`
+                );
+                const result = await response.json();
+
+                if (lookupId !== reverseLookupId) {
+                    return;
+                }
+
+                if (
+                    !response.ok ||
+                    !result.success ||
+                    !result.address ||
+                    typeof result.address !== "object"
+                ) {
+                    showEditLocationStatus(
+                        "Address suggestions are unavailable. You can enter the address manually."
+                    );
+                    return;
+                }
+
+                const address = result.address;
+                const locality =
+                    address.neighbourhood ||
+                    address.suburb ||
+                    address.quarter ||
+                    address.residential ||
+                    address.city_district ||
+                    "";
+                const city =
+                    address.city ||
+                    address.town ||
+                    address.village ||
+                    address.municipality ||
+                    "";
+                const landmark =
+                    address.amenity ||
+                    address.tourism ||
+                    address.historic ||
+                    address.leisure ||
+                    address.shop ||
+                    "";
+
+                applyingReverseSuggestions = true;
+                suggestEditAddressField("landmark", landmark);
+                suggestEditAddressField("locality", locality);
+                suggestEditAddressField("city", city);
+                suggestEditAddressField("state", address.state || "");
+                suggestEditAddressField("postalCode", address.postcode || "");
+                suggestEditAddressField("country", address.country || "");
+                suggestEditAddressField("location", city || locality);
+                applyingReverseSuggestions = false;
+
+                showEditLocationStatus(
+                    "Address suggestions loaded. Check the details and adjust the marker if needed."
+                );
+            } catch {
+                if (lookupId === reverseLookupId) {
+                    applyingReverseSuggestions = false;
+                    showEditLocationStatus(
+                        "Address suggestions are unavailable. You can enter the address manually."
+                    );
+                }
+            }
+        }
+
+        async function lookupEditAddress() {
+            const searchAddress = buildEditSearchAddress();
+
+            if (!searchAddress || !hasEnoughAddressDetails()) {
+                showEditLocationStatus(
+                    "Enter a city and country, plus a nearby address detail, before searching."
+                );
+                return;
+            }
+
+            if (editSearchButton.disabled) {
+                return;
+            }
+
+            const lookupId = ++forwardLookupId;
+            const controller = new AbortController();
+            forwardLookupController = controller;
+            editSearchButton.disabled = true;
+            editSearchButton.textContent = "Searching...";
+            editSearchButton.setAttribute("aria-busy", "true");
+
+            showEditLocationStatus("Searching for this address...");
+
+            try {
+                const response = await fetch(
+                    `/travel/geocode?location=${encodeURIComponent(searchAddress)}`,
+                    { signal: controller.signal }
+                );
+                const result = await response.json();
+
+                if (
+                    lookupId !== forwardLookupId ||
+                    searchAddress !== buildEditSearchAddress()
+                ) {
+                    return;
+                }
+
+                const latitude = Number(result.latitude);
+                const longitude = Number(result.longitude);
+
+                if (
+                    !response.ok ||
+                    !result.success ||
+                    !Number.isFinite(latitude) ||
+                    latitude < -90 ||
+                    latitude > 90 ||
+                    !Number.isFinite(longitude) ||
+                    longitude < -180 ||
+                    longitude > 180
+                ) {
+                    showEditLocationStatus(
+                        response.status === 404
+                            ? "No matching location found. Check the address and try again."
+                            : "Location lookup is temporarily unavailable."
+                    );
+                    return;
+                }
+
+                editMap.setView([latitude, longitude], 16);
+                setEditMarker(latitude, longitude);
+                showEditLocationStatus(
+                    "Location detected. Drag the marker to adjust it if needed."
+                );
+            } catch (error) {
+                if (
+                    error.name !== "AbortError" &&
+                    lookupId === forwardLookupId
+                ) {
+                    showEditLocationStatus(
+                        "Location lookup is temporarily unavailable."
+                    );
+                }
+            } finally {
+                if (lookupId === forwardLookupId) {
+                    forwardLookupController = null;
+                    editSearchButton.disabled = false;
+                    editSearchButton.textContent = "Search";
+                    editSearchButton.setAttribute("aria-busy", "false");
+                }
+            }
+        }
+
+        function handleEditAddressChange() {
+            if (applyingReverseSuggestions) {
+                return;
+            }
+
+            const searchWasInProgress =
+                forwardLookupController !== null;
+            invalidateForwardLookup();
+            reverseLookupId += 1;
+
+            if (searchWasInProgress) {
+                showEditLocationStatus(
+                    "Address changed. Select Search to look up the updated address."
+                );
+            }
+        }
+
+        const savedCoordinates = readCoordinates();
+
+        if (savedCoordinates) {
+            editMap.setView(
+                [savedCoordinates.latitude, savedCoordinates.longitude],
+                16
+            );
+            setEditMarker(
+                savedCoordinates.latitude,
+                savedCoordinates.longitude,
+                false
+            );
+        } else {
+            showEditLocationStatus(
+                "Enter the address and select Search to locate the property."
+            );
+        }
+
+        [
+            editAddressFields.landmark,
+            editAddressFields.locality,
+            editAddressFields.city,
+            editAddressFields.state,
+            editAddressFields.country,
+            editAddressFields.postalCode
+        ].forEach(function (input) {
+            input.addEventListener("input", handleEditAddressChange);
+            input.addEventListener("change", handleEditAddressChange);
+        });
+
+        editSearchButton.addEventListener(
+            "click",
+            lookupEditAddress
+        );
+
+        editMap.on("click", function (event) {
+            invalidateForwardLookup();
+            reverseLookupId += 1;
+            setEditMarker(event.latlng.lat, event.latlng.lng);
+            reverseGeocodeEditLocation(
+                event.latlng.lat,
+                event.latlng.lng
+            );
+        });
+
+        [editLatitudeInput, editLongitudeInput].forEach(function (input) {
+            input.addEventListener("change", function () {
+                const coordinates = readCoordinates();
+
+                if (coordinates) {
+                    editMap.setView(
+                        [coordinates.latitude, coordinates.longitude],
+                        16
+                    );
+                    setEditMarker(
+                        coordinates.latitude,
+                        coordinates.longitude
+                    );
+                }
+            });
+        });
+    } else {
+        editSearchButton.disabled = true;
+        showEditLocationStatus(
+            "The map could not be loaded. Enter coordinates manually."
+        );
+    }
+
 
     /* ==========================================
        EDIT FORM VALIDATION
@@ -226,6 +754,7 @@
 
                     if (
                         input &&
+                        input.required &&
                         !input.value.trim()
                     ) {
 
@@ -426,3 +955,17 @@
         });
 
 </script>
+
+<style>
+    .edit-search-btn {
+        width: auto;
+        min-width: 120px;
+        margin-top: 8px;
+        align-self: flex-start;
+    }
+
+    .edit-search-btn:disabled {
+        cursor: wait;
+        opacity: 0.7;
+    }
+</style>

@@ -88,50 +88,329 @@
     // GEOCODE LOCATION
     // ========================================
 
+    function buildNominatimSearchUrl(location) {
+        const url =
+            new URL(
+                `${NOMINATIM_URL.replace(/\/+$/, "")}/search`
+            );
+        const query =
+            location
+                .split(",")
+                .map(part => part.trim())
+                .filter(Boolean)
+                .join(", ");
+
+        url.searchParams.set("format", "jsonv2");
+        url.searchParams.set("addressdetails", "1");
+        url.searchParams.set("limit", "5");
+        url.searchParams.set("q", query);
+
+        return url.toString();
+    }
+
     async function geocodeLocation(location) {
 
-        const url =
-            `${NOMINATIM_URL}/search?format=json&limit=1&q=${encodeURIComponent(location)}`;
+        const parts =
+            location
+                .split(",")
+                .map(part => part.trim())
+                .filter(Boolean);
+        const hasPostalCode =
+            parts.length > 3 &&
+            /\d/.test(parts[parts.length - 1]);
+        const cityIndex =
+            parts.length - (hasPostalCode ? 4 : 3);
+        const city =
+            cityIndex >= 0 ? parts[cityIndex] : "";
+        const state =
+            parts[cityIndex + 1] || "";
+        const country =
+            parts[cityIndex + 2] || "";
+        const postalCode =
+            hasPostalCode ? parts[parts.length - 1] : "";
+        const detailParts =
+            cityIndex > 0 ? parts.slice(0, cityIndex) : [];
+        const landmark =
+            detailParts.length > 1 ? detailParts[0] : "";
+        const locality =
+            detailParts.length > 1
+                ? detailParts[1]
+                : detailParts[0] || "";
+        const makeQuery = values =>
+            values
+                .map(value => value.trim())
+                .filter(Boolean)
+                .join(", ");
+        const queries = [
+            {
+                query: makeQuery([
+                    landmark,
+                    locality,
+                    city,
+                    state,
+                    country
+                ]),
+                detailed: true,
+                required: landmark && locality
+            },
+            {
+                query: makeQuery([
+                    landmark,
+                    city,
+                    state,
+                    country
+                ]),
+                detailed: true,
+                required: landmark
+            },
+            {
+                query: makeQuery([
+                    locality,
+                    city,
+                    state,
+                    country,
+                    postalCode
+                ]),
+                detailed: true,
+                required: locality
+            },
+            {
+                query: makeQuery([
+                    locality,
+                    city,
+                    state,
+                    country
+                ]),
+                detailed: true,
+                required: locality
+            },
+            {
+                query: makeQuery([
+                    city,
+                    state,
+                    country
+                ]),
+                detailed: false,
+                required: city && state && country
+            }
+        ].filter(search => search.required);
+        const attemptedQueries = new Set();
+        let sawInvalidCoordinates = false;
 
-        const response =
-            await fetch(
-                url,
-                {
-                    headers: {
-                        "User-Agent":
-                            "Wanderlust Travel Application"
+        const normalize =
+            value =>
+                String(value || "")
+                    .toLocaleLowerCase()
+                    .replace(/[\s,]+/g, " ")
+                    .trim();
+        const matches =
+            (text, value) => {
+                const normalizedValue = normalize(value);
+
+                return Boolean(
+                    normalizedValue &&
+                    normalize(text).includes(normalizedValue)
+                );
+            };
+        const localityKeys = [
+            "neighbourhood",
+            "suburb",
+            "quarter",
+            "residential",
+            "city_district",
+            "hamlet",
+            "borough"
+        ];
+        const detailedKeys = [
+            ...localityKeys,
+            "road",
+            "pedestrian",
+            "footway",
+            "path",
+            "house_number",
+            "building",
+            "amenity",
+            "tourism",
+            "historic",
+            "leisure",
+            "shop"
+        ];
+
+        for (const search of queries) {
+            const normalizedQuery =
+                normalize(search.query);
+
+            if (!normalizedQuery || attemptedQueries.has(normalizedQuery)) {
+                continue;
+            }
+
+            attemptedQueries.add(normalizedQuery);
+            const url =
+                buildNominatimSearchUrl(search.query);
+            const response =
+                await fetch(
+                    url,
+                    {
+                        headers: {
+                            "User-Agent":
+                                "Wanderlust Travel Application"
+                        }
                     }
-                }
-            );
+                );
 
-        if (!response.ok) {
+            if (!response.ok) {
+                const error =
+                    new Error(
+                        `Nominatim search failed with HTTP ${response.status}.`
+                    );
+                error.code = "GEOCODE_UPSTREAM";
+                throw error;
+            }
 
-            throw new Error(
-                "Unable to find destination."
-            );
+            const data =
+                await response.json();
+
+            if (!Array.isArray(data) || !data.length) {
+                continue;
+            }
+
+            const candidates =
+                data
+                    .map(candidate => {
+                        const latitude =
+                            Number(candidate.lat);
+                        const longitude =
+                            Number(candidate.lon);
+
+                        if (
+                            !Number.isFinite(latitude) ||
+                            latitude < -90 ||
+                            latitude > 90 ||
+                            !Number.isFinite(longitude) ||
+                            longitude < -180 ||
+                            longitude > 180
+                        ) {
+                            sawInvalidCoordinates = true;
+                            return null;
+                        }
+
+                        const address =
+                            candidate.address &&
+                            typeof candidate.address === "object"
+                                ? candidate.address
+                                : {};
+                        const addressText =
+                            Object.values(address).join(", ");
+                        const resultText =
+                            `${candidate.display_name || ""}, ${addressText}`;
+                        const hasDetailedAddress =
+                            detailedKeys.some(key => address[key]);
+                        const landmarkMatch =
+                            matches(resultText, landmark);
+                        const localityMatch =
+                            matches(
+                                localityKeys
+                                    .map(key => address[key])
+                                    .filter(Boolean)
+                                    .join(", "),
+                                locality
+                            ) ||
+                            (
+                                hasDetailedAddress &&
+                                matches(resultText, locality)
+                            );
+
+                        if (
+                            search.detailed &&
+                            !hasDetailedAddress &&
+                            !landmarkMatch &&
+                            !localityMatch
+                        ) {
+                            return null;
+                        }
+
+                        const precision =
+                            landmarkMatch
+                                ? "landmark"
+                                : localityMatch
+                                    ? "locality"
+                                    : hasDetailedAddress
+                                        ? "street"
+                                        : "city";
+                        const score =
+                            (landmarkMatch ? 100 : 0) +
+                            (localityMatch ? 80 : 0) +
+                            (hasDetailedAddress ? 30 : 0) +
+                            (
+                                matches(
+                                    [
+                                        address.city,
+                                        address.town,
+                                        address.village,
+                                        address.municipality
+                                    ].filter(Boolean).join(", "),
+                                    city
+                                )
+                                    ? 15
+                                    : 0
+                            ) +
+                            (
+                                matches(address.state, state)
+                                    ? 10
+                                    : 0
+                            ) +
+                            (
+                                matches(address.country, country)
+                                    ? 5
+                                    : 0
+                            ) +
+                            (
+                                matches(address.postcode, postalCode)
+                                    ? 10
+                                    : 0
+                            );
+
+                        return {
+                            latitude,
+                            longitude,
+                            displayName:
+                                candidate.display_name || "",
+                            precision,
+                            approximate: precision === "city",
+                            score
+                        };
+                    })
+                    .filter(Boolean)
+                    .sort((left, right) => right.score - left.score);
+
+            if (candidates.length) {
+                const bestMatch = candidates[0];
+
+                return {
+                    latitude: bestMatch.latitude,
+                    longitude: bestMatch.longitude,
+                    displayName: bestMatch.displayName,
+                    matchPrecision: bestMatch.precision,
+                    approximate: bestMatch.approximate
+                };
+            }
         }
 
-        const data =
-            await response.json();
+        if (sawInvalidCoordinates) {
+            const error =
+                new Error(
+                    "Nominatim returned invalid coordinates for matching results."
+                );
+            error.code = "GEOCODE_UPSTREAM";
+            throw error;
+        }
 
-        if (!data.length) {
-
-            throw new Error(
+        const error =
+            new Error(
                 `Could not find "${location}".`
             );
-        }
-
-        return {
-
-            latitude:
-                Number(data[0].lat),
-
-            longitude:
-                Number(data[0].lon),
-
-            displayName:
-                data[0].display_name
-        };
+        error.code = "GEOCODE_NOT_FOUND";
+        throw error;
     }
 
     // ========================================
@@ -152,6 +431,10 @@
                 if (!location) {
 
                     return res.status(400).json({
+                        success: false,
+                        latitude: null,
+                        longitude: null,
+                        displayName: "",
                         message:
                             "Location is required."
                     });
@@ -172,22 +455,132 @@
                         result.longitude,
 
                     displayName:
-                        result.displayName
+                        result.displayName,
+
+                    matchPrecision:
+                        result.matchPrecision,
+
+                    approximate:
+                        result.approximate
                 });
 
             } catch (error) {
 
-                console.error(
-                    "[Travel Geocode] Error:",
-                    error
-                );
+                const notFound =
+                    error.code === "GEOCODE_NOT_FOUND";
 
-                return res.status(400).json({
+                if (!notFound) {
+                    console.error(
+                        "[Travel Geocode] Error:",
+                        error
+                    );
+                }
+
+                return res.status(
+                    notFound ? 404 : 502
+                ).json({
                     success: false,
-
+                    latitude: null,
+                    longitude: null,
+                    displayName: "",
                     message:
                         error.message ||
                         "Unable to find location."
+                });
+            }
+        }
+    );
+
+    router.get(
+        "/reverse-geocode",
+        async (req, res) => {
+            const latitude =
+                typeof req.query.latitude === "string"
+                    ? Number(req.query.latitude)
+                    : NaN;
+            const longitude =
+                typeof req.query.longitude === "string"
+                    ? Number(req.query.longitude)
+                    : NaN;
+
+            if (
+                !Number.isFinite(latitude) ||
+                latitude < -90 ||
+                latitude > 90 ||
+                !Number.isFinite(longitude) ||
+                longitude < -180 ||
+                longitude > 180
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    displayName: "",
+                    address: {},
+                    message: "Valid latitude and longitude are required."
+                });
+            }
+
+            try {
+                const reverseUrl =
+                    `${NOMINATIM_URL}/reverse?format=jsonv2` +
+                    `&lat=${encodeURIComponent(latitude)}` +
+                    `&lon=${encodeURIComponent(longitude)}`;
+                const response =
+                    await fetch(
+                        reverseUrl,
+                        {
+                            headers: {
+                                "User-Agent":
+                                    "Wanderlust Travel Application"
+                            }
+                        }
+                    );
+
+                if (!response.ok) {
+                    const error =
+                        new Error(
+                            `Nominatim reverse lookup failed with HTTP ${response.status}.`
+                        );
+                    error.code = "GEOCODE_UPSTREAM";
+                    throw error;
+                }
+
+                const result =
+                    await response.json();
+
+                if (
+                    !result ||
+                    typeof result !== "object" ||
+                    !result.address ||
+                    typeof result.address !== "object" ||
+                    Object.keys(result.address).length === 0
+                ) {
+                    return res.status(404).json({
+                        success: false,
+                        displayName: "",
+                        address: {},
+                        message:
+                            "No nearby address details were found."
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    displayName: result.display_name || "",
+                    address: result.address || {}
+                });
+            } catch (error) {
+                console.error(
+                    "[Travel Reverse Geocode] Error:",
+                    error
+                );
+
+                return res.status(502).json({
+                    success: false,
+                    displayName: "",
+                    address: {},
+                    message:
+                        error.message ||
+                        "Unable to find nearby address details."
                 });
             }
         }

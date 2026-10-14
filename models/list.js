@@ -47,6 +47,42 @@ const listingschema = new Schema({
         default: ""
     },
 
+    propertyName: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    },
+
+    landmark: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    },
+
+    locality: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    },
+
+    city: {
+        type: String,
+        trim: true,
+        maxlength: 100
+    },
+
+    state: {
+        type: String,
+        trim: true,
+        maxlength: 100
+    },
+
+    pincode: {
+        type: String,
+        trim: true,
+        maxlength: 12
+    },
+
     amenities: {
         type: [String],
         default: []
@@ -56,11 +92,15 @@ const listingschema = new Schema({
     coordinates: {
 
         lat: {
-            type: Number
+            type: Number,
+            min: -90,
+            max: 90
         },
 
         lng: {
-            type: Number
+            type: Number,
+            min: -180,
+            max: 180
         }
 
     },

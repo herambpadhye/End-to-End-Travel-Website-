@@ -4697,3 +4697,171 @@ CRUISE RESPONSIVE DESIGN
         gap: 10px;
     }
 }
+
+/* Nearby listings */
+.show-container .nearby-listings-section {
+    margin-top: 28px;
+}
+
+.show-container .nearby-listings-heading {
+    margin: 0 0 16px;
+    color: #222;
+    font-size: 1.35rem;
+    font-weight: 600;
+}
+
+.show-container .nearby-listings-row {
+    display: flex;
+    gap: 18px;
+    overflow-x: auto;
+    padding: 2px 2px 14px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+.show-container .nearby-listing-card {
+    flex: 0 0 220px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+    scroll-snap-align: start;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.show-container .nearby-listing-card:hover {
+    color: inherit;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+
+.show-container .nearby-listing-image {
+    display: block;
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    background: #f3f4f6;
+}
+
+.show-container .nearby-listing-details {
+    padding: 12px;
+}
+
+.show-container .nearby-listing-title {
+    display: -webkit-box;
+    overflow: hidden;
+    min-height: 2.6em;
+    margin: 0 0 7px;
+    color: #222;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.show-container .nearby-listing-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    color: #555;
+    font-size: 0.82rem;
+}
+
+.show-container .nearby-listing-price {
+    color: #222;
+    font-weight: 600;
+}
+
+.show-container .nearby-listing-rating {
+    color: #333;
+}
+
+.show-container .nearby-listing-rating .fa-star {
+    color: #ff385c;
+}
+
+@media (max-width: 576px) {
+    .show-container .nearby-listings-row {
+        gap: 12px;
+    }
+
+    .show-container .nearby-listing-card {
+        flex-basis: 190px;
+    }
+}
+
+.show-container .nearby-listings-section .nearby-listings-row {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.show-container .nearby-listings-section .nearby-listings-row::-webkit-scrollbar {
+    display: none;
+}
+
+.show-container .nearby-listings-section .nearby-listings-carousel {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    align-items: center;
+    gap: 10px;
+}
+
+.show-container .nearby-listings-section .nearby-listings-arrow {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    color: #222;
+    cursor: pointer;
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        color 0.2s ease;
+}
+
+.show-container .nearby-listings-section .nearby-listings-arrow:hover:not(:disabled) {
+    border-color: #ff385c;
+    background: #fff5f6;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
+    color: #e03150;
+}
+
+.show-container .nearby-listings-section .nearby-listings-arrow:focus-visible {
+    outline: 2px solid #ff385c;
+    outline-offset: 3px;
+}
+
+.show-container .nearby-listings-section .nearby-listings-arrow:disabled {
+    background: #f8f9fa;
+    box-shadow: none;
+    color: #a5aab2;
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+@media (max-width: 576px) {
+    .show-container .nearby-listings-section .nearby-listings-carousel {
+        grid-template-columns: 36px minmax(0, 1fr) 36px;
+        gap: 6px;
+    }
+
+    .show-container .nearby-listings-section .nearby-listings-arrow {
+        width: 36px;
+        height: 36px;
+    }
+}

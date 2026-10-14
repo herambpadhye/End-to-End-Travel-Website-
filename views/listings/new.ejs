@@ -48,9 +48,114 @@
                 required
             />
 
+            <small>Keep this existing listing location field; enter the property's city or general destination.</small>
+
             <span class="error-msg"></span>
 
         </div>
+
+        <div class="form-group">
+            <label>Property name</label>
+            <input
+                name="listing[propertyName]"
+                type="text"
+                placeholder="Enter the property's name"
+                required
+            />
+            <span class="error-msg"></span>
+
+        </div>
+
+        <div class="form-group">
+            <label>Nearby landmark</label>
+            <input
+                name="listing[landmark]"
+                type="text"
+                placeholder="Enter a nearby landmark"
+                required
+            />
+            <span class="error-msg"></span>
+        </div>
+
+        <div class="form-group">
+            <label>Locality / area</label>
+            <input
+                name="listing[locality]"
+                type="text"
+                placeholder="Enter the locality or area"
+                required
+            />
+            <span class="error-msg"></span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>City</label>
+                <input
+                    name="listing[city]"
+                    type="text"
+                    placeholder="Enter the city"
+                    required
+                />
+                <span class="error-msg"></span>
+            </div>
+
+            <div class="form-group">
+                <label>State</label>
+                <input
+                    name="listing[state]"
+                    type="text"
+                    placeholder="Enter the state"
+                    required
+                />
+                <span class="error-msg"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>PIN code</label>
+            <input
+                name="listing[pinCode]"
+                type="text"
+                inputmode="numeric"
+                autocomplete="postal-code"
+                placeholder="Enter the PIN code"
+                required
+            />
+            <button
+                type="button"
+                class="submit-btn listing-search-btn"
+                id="listing-search-location"
+            >
+                Search
+            </button>
+            <span class="error-msg"></span>
+        </div>
+
+        <div class="form-group">
+            <small
+                id="listing-location-status"
+                role="status"
+                aria-live="polite"
+            ></small>
+            <div
+                id="listing-location-map"
+                role="application"
+                aria-label="Select the exact property location"
+                style="height: 360px; width: 100%;"
+            ></div>
+        </div>
+
+        <input
+            id="listing-latitude"
+            name="listing[coordinates][lat]"
+            type="hidden"
+        />
+        <input
+            id="listing-longitude"
+            name="listing[coordinates][lng]"
+            type="hidden"
+        />
 
         <!-- ======================================== -->
         <!-- DESCRIPTION -->
@@ -226,6 +331,11 @@
 
 </div>
 
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
@@ -381,6 +491,406 @@
     );
 
     updateClimateAmenities();
+
+    const propertyMapElement =
+        document.getElementById("listing-location-map");
+    const latitudeInput =
+        document.getElementById("listing-latitude");
+    const longitudeInput =
+        document.getElementById("listing-longitude");
+    const locationStatus =
+        document.getElementById("listing-location-status");
+    const searchLocationButton =
+        document.getElementById("listing-search-location");
+    const addressFields = {
+        location: locationInput,
+        propertyName:
+            document.querySelector('input[name="listing[propertyName]"]'),
+        landmark:
+            document.querySelector('input[name="listing[landmark]"]'),
+        locality:
+            document.querySelector('input[name="listing[locality]"]'),
+        city:
+            document.querySelector('input[name="listing[city]"]'),
+        state:
+            document.querySelector('input[name="listing[state]"]'),
+        pinCode:
+            document.querySelector('input[name="listing[pinCode]"]'),
+        country:
+            document.querySelector('input[name="listing[country]"]')
+    };
+    const addressLookupFields = [
+        addressFields.landmark,
+        addressFields.locality,
+        addressFields.city,
+        addressFields.state,
+        addressFields.country,
+        addressFields.pinCode
+    ];
+    const manuallyEditedAddressFields = new Set();
+
+    Object.values(addressFields).forEach(function (input) {
+        if (input) {
+            input.addEventListener("input", function (event) {
+                if (event.isTrusted) {
+                    manuallyEditedAddressFields.add(input);
+                }
+            });
+        }
+    });
+
+    function showLocationStatus(message) {
+        if (locationStatus) {
+            locationStatus.textContent = message;
+        }
+    }
+
+    function suggestAddressField(fieldName, value) {
+        const input = addressFields[fieldName];
+
+        if (
+            input &&
+            value &&
+            !manuallyEditedAddressFields.has(input)
+        ) {
+            input.value = value;
+
+            if (fieldName === "location") {
+                input.dispatchEvent(
+                    new Event("input", { bubbles: true })
+                );
+            }
+        }
+    }
+
+    if (typeof L !== "undefined" && propertyMapElement) {
+        const propertyMap =
+            L.map(propertyMapElement).setView([20, 0], 2);
+
+        L.tileLayer(
+            "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                maxZoom: 19,
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+            }
+        ).addTo(propertyMap);
+
+        let propertyMarker = null;
+        let reverseLookupId = 0;
+        let forwardLookupId = 0;
+        let forwardLookupController = null;
+        let mapInteractionInProgress = false;
+
+        function buildSearchAddress() {
+            return [
+                addressFields.landmark,
+                addressFields.locality,
+                addressFields.city,
+                addressFields.state,
+                addressFields.country,
+                addressFields.pinCode
+            ]
+                .map(input => input.value.trim())
+                .filter(Boolean)
+                .join(", ");
+        }
+
+        function hasCompleteSearchAddress() {
+            return Boolean(
+                addressFields.city.value.trim() &&
+                addressFields.country.value.trim() &&
+                (
+                    addressFields.landmark.value.trim() ||
+                    addressFields.locality.value.trim() ||
+                    addressFields.state.value.trim() ||
+                    addressFields.pinCode.value.trim()
+                )
+            );
+        }
+
+        function invalidateAddressLookup() {
+            forwardLookupId += 1;
+
+            if (forwardLookupController) {
+                forwardLookupController.abort();
+                forwardLookupController = null;
+            }
+
+            searchLocationButton.disabled = false;
+            searchLocationButton.textContent = "Search";
+            searchLocationButton.setAttribute("aria-busy", "false");
+        }
+
+        function updatePropertyCoordinates(latitude, longitude) {
+            latitudeInput.value = latitude.toFixed(6);
+            longitudeInput.value = longitude.toFixed(6);
+        }
+
+        async function suggestAddressFromCoordinates(latitude, longitude) {
+            const lookupId = ++reverseLookupId;
+
+            showLocationStatus(
+                "Looking up nearby address details. Suggestions may be approximate."
+            );
+
+            try {
+                const response = await fetch(
+                    `/travel/reverse-geocode?latitude=${encodeURIComponent(latitude)}` +
+                    `&longitude=${encodeURIComponent(longitude)}`
+                );
+
+                if (!response.ok) {
+                    throw new Error("Reverse address lookup failed.");
+                }
+
+                const result = await response.json();
+
+                if (lookupId !== reverseLookupId) {
+                    return;
+                }
+
+                if (
+                    !result.success ||
+                    !result.address ||
+                    typeof result.address !== "object" ||
+                    Object.keys(result.address).length === 0
+                ) {
+                    throw new Error(
+                        result.message || "No nearby address details were found."
+                    );
+                }
+
+                const address = result.address;
+                const locality =
+                    address.neighbourhood ||
+                    address.suburb ||
+                    address.quarter ||
+                    address.residential ||
+                    address.city_district ||
+                    "";
+                const city =
+                    address.city ||
+                    address.town ||
+                    address.village ||
+                    address.municipality ||
+                    "";
+                const landmark =
+                    address.amenity ||
+                    address.tourism ||
+                    address.historic ||
+                    address.leisure ||
+                    address.shop ||
+                    "";
+
+                suggestAddressField("landmark", landmark);
+                suggestAddressField("locality", locality);
+                suggestAddressField("city", city);
+                suggestAddressField("state", address.state || "");
+                suggestAddressField("pinCode", address.postcode || "");
+                suggestAddressField("country", address.country || "");
+                suggestAddressField("location", city || locality);
+
+                showLocationStatus(
+                    "Address suggestions loaded. Verify them and adjust the marker to the property's actual entrance; you can edit every address field."
+                );
+            } catch {
+                if (lookupId !== reverseLookupId) {
+                    return;
+                }
+
+                showLocationStatus(
+                    "Address lookup is unavailable. The selected coordinates are saved; enter or correct the address details manually."
+                );
+            }
+        }
+
+        function setPropertyMarker(latitude, longitude, lookupAddress) {
+            invalidateAddressLookup();
+
+            if (propertyMarker) {
+                propertyMarker.setLatLng([latitude, longitude]);
+            } else {
+                propertyMarker =
+                    L.marker([latitude, longitude], {
+                        draggable: true
+                    }).addTo(propertyMap);
+
+                propertyMarker.on("dragend", function () {
+                    mapInteractionInProgress = false;
+                    const position =
+                        propertyMarker.getLatLng();
+                    updatePropertyCoordinates(
+                        position.lat,
+                        position.lng
+                    );
+                    suggestAddressFromCoordinates(
+                        position.lat,
+                        position.lng
+                    );
+                });
+                propertyMarker.on("dragstart", function () {
+                    mapInteractionInProgress = true;
+                    invalidateAddressLookup();
+                    reverseLookupId += 1;
+                });
+            }
+
+            updatePropertyCoordinates(latitude, longitude);
+
+            if (lookupAddress) {
+                suggestAddressFromCoordinates(latitude, longitude);
+            }
+        }
+
+        propertyMap.on("click", function (event) {
+            setPropertyMarker(
+                event.latlng.lat,
+                event.latlng.lng,
+                true
+            );
+        });
+
+        async function lookupPropertyAddress() {
+            const searchAddress = buildSearchAddress();
+            if (!searchAddress || !hasCompleteSearchAddress()) {
+                showLocationStatus(
+                    "Enter a city and country, plus a nearby address detail, before searching."
+                );
+                return;
+            }
+
+            if (searchLocationButton.disabled || mapInteractionInProgress) {
+                return;
+            }
+
+            const lookupId = ++forwardLookupId;
+            const controller = new AbortController();
+            forwardLookupController = controller;
+            searchLocationButton.disabled = true;
+            searchLocationButton.textContent = "Searching...";
+            searchLocationButton.setAttribute("aria-busy", "true");
+
+            showLocationStatus(
+                "Searching for this address..."
+            );
+
+            try {
+                const response = await fetch(
+                    `/travel/geocode?location=${encodeURIComponent(searchAddress)}`,
+                    {
+                        signal: controller.signal
+                    }
+                );
+                const result = await response.json();
+
+                if (lookupId !== forwardLookupId) {
+                    return;
+                }
+
+                if (
+                    searchAddress !== buildSearchAddress() ||
+                    mapInteractionInProgress
+                ) {
+                    return;
+                }
+
+                if (
+                    response.status === 404 ||
+                    (response.ok && !result.success)
+                ) {
+                    showLocationStatus(
+                        "No matching location found. Check the address and try again."
+                    );
+                    return;
+                }
+
+                if (
+                    !response.ok ||
+                    !result.success ||
+                    !Number.isFinite(Number(result.latitude)) ||
+                    !Number.isFinite(Number(result.longitude)) ||
+                    Number(result.latitude) < -90 ||
+                    Number(result.latitude) > 90 ||
+                    Number(result.longitude) < -180 ||
+                    Number(result.longitude) > 180
+                ) {
+                    throw new Error(
+                        result.message || "Address lookup did not return valid coordinates."
+                    );
+                }
+
+                const latitude = Number(result.latitude);
+                const longitude = Number(result.longitude);
+
+                propertyMap.setView([latitude, longitude], 16);
+                setPropertyMarker(latitude, longitude, false);
+                showLocationStatus(
+                    "Location detected. Adjust the marker to the property's exact entrance if needed."
+                );
+            } catch (error) {
+                if (
+                    error.name !== "AbortError" &&
+                    lookupId === forwardLookupId
+                ) {
+                    showLocationStatus(
+                        "Location lookup is temporarily unavailable. You can adjust the map marker manually."
+                    );
+                }
+            } finally {
+                if (lookupId === forwardLookupId) {
+                    forwardLookupController = null;
+                    searchLocationButton.disabled = false;
+                    searchLocationButton.textContent = "Search";
+                    searchLocationButton.setAttribute("aria-busy", "false");
+                }
+            }
+        }
+
+        function handleAddressEdit() {
+            const searchWasInProgress =
+                forwardLookupController !== null;
+            invalidateAddressLookup();
+            reverseLookupId += 1;
+
+            if (searchWasInProgress) {
+                showLocationStatus(
+                    "Address changed. Select Search to look up the updated address."
+                );
+            }
+        }
+
+        addressLookupFields.forEach(function (input) {
+            input.addEventListener("input", handleAddressEdit);
+            input.addEventListener("change", handleAddressEdit);
+        });
+
+        searchLocationButton.addEventListener(
+            "click",
+            lookupPropertyAddress
+        );
+
+        propertyMapElement.addEventListener(
+            "pointerdown",
+            function () {
+                mapInteractionInProgress = true;
+                invalidateAddressLookup();
+                reverseLookupId += 1;
+            }
+        );
+        window.addEventListener("pointerup", function () {
+            mapInteractionInProgress = false;
+        });
+        window.addEventListener("pointercancel", function () {
+            mapInteractionInProgress = false;
+        });
+    } else {
+        searchLocationButton.disabled = true;
+        console.error("The property location map could not be loaded.");
+        showLocationStatus(
+            "The map could not be loaded. Enter the address and coordinates manually."
+        );
+    }
 
 
     // =====================================================
@@ -610,6 +1120,27 @@
 
                 }
 
+                const latitude =
+                    latitudeInput.value.trim();
+                const longitude =
+                    longitudeInput.value.trim();
+                const validCoordinates =
+                    latitude !== "" &&
+                    longitude !== "" &&
+                    Number.isFinite(Number(latitude)) &&
+                    Number(latitude) >= -90 &&
+                    Number(latitude) <= 90 &&
+                    Number.isFinite(Number(longitude)) &&
+                    Number(longitude) >= -180 &&
+                    Number(longitude) <= 180;
+
+                if (!validCoordinates) {
+                    showLocationStatus(
+                        "Wait for the location to be detected or select the property on the map before submitting."
+                    );
+                    isValid = false;
+                }
+
 
                 // =========================================
                 // STOP SUBMISSION IF INVALID
@@ -625,3 +1156,17 @@
         );
 
 </script>
+
+<style>
+    .listing-search-btn {
+        width: auto;
+        min-width: 120px;
+        margin-top: 8px;
+        align-self: flex-start;
+    }
+
+    .listing-search-btn:disabled {
+        cursor: wait;
+        opacity: 0.7;
+    }
+</style>

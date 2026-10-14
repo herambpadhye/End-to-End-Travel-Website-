@@ -187,7 +187,66 @@
         updateConfirmationSubtotal();
     }
 
+    function initializeNearbyListings() {
+        const nearbySection =
+            document.querySelector(".nearby-listings-section");
+        const nearbyTrack =
+            nearbySection &&
+            nearbySection.querySelector(".nearby-listings-row");
+
+        if (
+            !nearbySection ||
+            !nearbyTrack ||
+            nearbyTrack.dataset.nearbyNavigationInitialized === "true"
+        ) {
+            return;
+        }
+
+        const previousButton =
+            nearbySection.querySelector('[data-nearby-direction="-1"]');
+        const nextButton =
+            nearbySection.querySelector('[data-nearby-direction="1"]');
+
+        if (!previousButton || !nextButton) {
+            return;
+        }
+
+        nearbyTrack.dataset.nearbyNavigationInitialized = "true";
+
+        function updateArrowStates() {
+            const maxScroll =
+                nearbyTrack.scrollWidth - nearbyTrack.clientWidth;
+
+            previousButton.disabled =
+                nearbyTrack.scrollLeft <= 1;
+            nextButton.disabled =
+                maxScroll <= 1 ||
+                nearbyTrack.scrollLeft >= maxScroll - 1;
+        }
+
+        previousButton.addEventListener("click", function () {
+            nearbyTrack.scrollBy({
+                left: -nearbyTrack.clientWidth * 0.85,
+                behavior: "smooth"
+            });
+        });
+
+        nextButton.addEventListener("click", function () {
+            nearbyTrack.scrollBy({
+                left: nearbyTrack.clientWidth * 0.85,
+                behavior: "smooth"
+            });
+        });
+
+        nearbyTrack.addEventListener("scroll", updateArrowStates, {
+            passive: true
+        });
+        window.addEventListener("resize", updateArrowStates);
+        updateArrowStates();
+    }
+
     function initializeListingBooking() {
+        initializeNearbyListings();
         initializeBookingConfirmation();
 
         const bookingForm = document.getElementById("listing-booking-form");
