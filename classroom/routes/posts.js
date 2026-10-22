@@ -3,6 +3,7 @@ const router = express.Router();
 
 const Listing = require("../../models/list.js");
 const Review = require("../../models/review.js");
+const User = require("../../models/user.js");
 
 // ========================================
 // MULTER + CLOUDINARY IMAGE UPLOAD
@@ -755,6 +756,16 @@ router.get(
                 );
             }
 
+            const listingHost = listing.host
+                ? await User.findById(listing.host)
+                    .select("hostUpiQrImageUrl")
+                    .lean()
+                : null;
+            const hostUpiQrImageUrl =
+                listingHost && listingHost.hostUpiQrImageUrl
+                    ? listingHost.hostUpiQrImageUrl
+                    : "";
+
             const nightlyPrice =
                 Number(listing.price);
 
@@ -776,6 +787,7 @@ router.get(
                 "listings/booking.ejs",
                 {
                     listing,
+                    hostUpiQrImageUrl,
                     checkIn,
                     checkOut,
                     adults,
