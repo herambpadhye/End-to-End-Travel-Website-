@@ -62,6 +62,11 @@ const userSchema = new Schema({
     hostDescription: {
         type: String,
         default: ""
+    },
+
+    hostUpiQrImageUrl: {
+        type: String,
+        default: ""
     }
 });
 

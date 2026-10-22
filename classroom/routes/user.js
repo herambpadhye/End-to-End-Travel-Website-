@@ -122,6 +122,29 @@ const hostUpload = multer({
     }
 });
 
+const qrImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        files: 1,
+        fileSize: 5 * 1024 * 1024
+    },
+    fileFilter: function (req, file, cb) {
+        const allowedTypesByExtension = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp"
+        };
+        const extension = path.extname(file.originalname).toLowerCase();
+
+        if (allowedTypesByExtension[extension] === file.mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error("Choose a JPG, PNG, or WebP image."));
+        }
+    }
+});
+
 
 // ========================================
 // Gmail Validation
@@ -281,6 +304,85 @@ function isCloudinarySecureUrl(fileUrl) {
 
     }
 
+}
+
+function isHostQrCloudinaryUrl(fileUrl) {
+    if (!isCloudinarySecureUrl(fileUrl)) {
+        return false;
+    }
+
+    const parsedUrl = new URL(fileUrl);
+    const uploadPathIndex = parsedUrl.pathname.indexOf("/image/upload/");
+
+    if (uploadPathIndex < 0) {
+        return false;
+    }
+
+    const assetPath = parsedUrl.pathname.slice(
+        uploadPathIndex + "/image/upload/".length
+    ).replace(/^v\d+\//, "");
+
+    return assetPath.startsWith("wanderlust/hosts/upi-qr/");
+}
+
+function getHostQrPublicId(fileUrl) {
+    if (!isHostQrCloudinaryUrl(fileUrl)) {
+        return null;
+    }
+
+    const parsedUrl = new URL(fileUrl);
+    const uploadPathIndex = parsedUrl.pathname.indexOf("/image/upload/");
+    const assetPath = parsedUrl.pathname.slice(
+        uploadPathIndex + "/image/upload/".length
+    ).replace(/^v\d+\//, "");
+
+    return assetPath.replace(/\.[^/.]+$/, "");
+}
+
+function uploadHostQrToCloudinary(file) {
+    return new Promise((resolve, reject) => {
+        if (!file || !file.buffer) {
+            reject(new Error("Choose a QR image to upload."));
+            return;
+        }
+
+        cloudinary.uploader.upload_stream(
+            {
+                folder: "wanderlust/hosts/upi-qr",
+                resource_type: "image",
+                timeout: 120000
+            },
+            (error, result) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                if (!result || !result.secure_url || !result.public_id) {
+                    reject(new Error("Cloudinary did not return the QR image details."));
+                    return;
+                }
+
+                resolve(result);
+            }
+        ).end(file.buffer);
+    });
+}
+
+async function destroyHostQrFromCloudinary(fileUrl) {
+    const publicId = getHostQrPublicId(fileUrl);
+
+    if (!publicId) {
+        return;
+    }
+
+    const result = await cloudinary.uploader.destroy(publicId, {
+        resource_type: "image"
+    });
+
+    if (result.result !== "ok" && result.result !== "not found") {
+        throw new Error(`Cloudinary did not delete the previous QR image (${result.result}).`);
+    }
 }
 
 
@@ -993,7 +1095,14 @@ router.get("/profile", async (req, res) => {
 
         }
 
-        return renderProfilePage(res, user);
+        const qrUploadFeedback = req.session.qrUploadFeedback;
+        delete req.session.qrUploadFeedback;
+
+        return renderProfilePage(
+            res,
+            user,
+            qrUploadFeedback ? { qrUploadFeedback } : {}
+        );
 
     } catch (error) {
 
@@ -1004,6 +1113,125 @@ router.get("/profile", async (req, res) => {
     }
 
 });
+
+
+async function requireHostForQrUpload(req, res, next) {
+    if (!req.session.userId) {
+        return res.redirect("/users/login");
+    }
+
+    try {
+        const user = await User.findById(req.session.userId);
+
+        if (!user) {
+            req.session.destroy();
+            return res.redirect("/users/login");
+        }
+
+        if (!user.isHost) {
+            req.session.qrUploadFeedback = {
+                type: "error",
+                message: "Only hosts can upload a UPI QR code."
+            };
+            return res.redirect("/users/profile");
+        }
+
+        req.hostQrUser = user;
+        return next();
+    } catch (error) {
+        console.error("Unable to authorize host QR upload.", error);
+        req.session.qrUploadFeedback = {
+            type: "error",
+            message: "Unable to verify your host account. Please try again."
+        };
+        return res.redirect("/users/profile");
+    }
+}
+
+function handleHostQrUpload(req, res, next) {
+    qrImageUpload.single("upiQrImage")(req, res, (error) => {
+        if (!error) {
+            return next();
+        }
+
+        console.error("Host QR image upload was rejected.", error);
+        req.session.qrUploadFeedback = {
+            type: "error",
+            message: error.code === "LIMIT_FILE_SIZE"
+                ? "The QR image must be 5 MB or smaller."
+                : error.message
+        };
+        return res.redirect("/users/profile");
+    });
+}
+
+router.post(
+    "/profile/upi-qr",
+    requireHostForQrUpload,
+    handleHostQrUpload,
+    async (req, res) => {
+        const user = req.hostQrUser;
+
+        if (!req.file) {
+            req.session.qrUploadFeedback = {
+                type: "error",
+                message: "Choose a JPG, PNG, or WebP QR image to upload."
+            };
+            return res.redirect("/users/profile");
+        }
+
+        const previousImageUrl = user.hostUpiQrImageUrl;
+        let uploadedImage;
+        let imageSaved = false;
+
+        try {
+            uploadedImage = await uploadHostQrToCloudinary(req.file);
+
+            if (!isHostQrCloudinaryUrl(uploadedImage.secure_url)) {
+                throw new Error("Cloudinary returned an invalid QR image URL.");
+            }
+
+            user.hostUpiQrImageUrl = uploadedImage.secure_url;
+            await user.save();
+            imageSaved = true;
+
+            if (
+                previousImageUrl &&
+                previousImageUrl !== uploadedImage.secure_url
+            ) {
+                try {
+                    await destroyHostQrFromCloudinary(previousImageUrl);
+                } catch (error) {
+                    console.error("Unable to remove the replaced host QR image.", error);
+                }
+            }
+
+            req.session.qrUploadFeedback = {
+                type: "success",
+                message: "Your UPI QR code was saved successfully."
+            };
+            return res.redirect("/users/profile");
+        } catch (error) {
+            if (!imageSaved && uploadedImage && uploadedImage.public_id) {
+                user.hostUpiQrImageUrl = previousImageUrl;
+                try {
+                    await cloudinary.uploader.destroy(uploadedImage.public_id, {
+                        resource_type: "image"
+                    });
+                } catch (cleanupError) {
+                    console.error("Unable to clean up an unsaved QR image.", cleanupError);
+                }
+            }
+
+            console.error("Unable to save host UPI QR image.", error);
+            req.session.qrUploadFeedback = {
+                type: "error",
+                message: "Unable to save your QR code. Your previous QR code was kept."
+            };
+            return res.redirect("/users/profile");
+        }
+    }
+);
 
 
 // ========================================

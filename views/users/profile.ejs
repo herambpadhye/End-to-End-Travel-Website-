@@ -30,6 +30,7 @@
 
                 </div>
 
+
             <% } %>
 
             <a
@@ -390,9 +391,99 @@
                 </p>
 
             </div>
-
         </div>
-
     </div>
+
+    <% if (
+        user.isHost &&
+        currentUser &&
+        String(currentUser._id) === String(user._id)
+    ) { %>
+        <section class="profile-card" aria-labelledby="host-qr-heading">
+            <div class="profile-left">
+                <h3 class="profile-heading" id="host-qr-heading">Add your QR code</h3>
+                <p class="profile-field-hint">
+                    Upload the UPI QR code guests should use when booking your properties.
+                </p>
+
+                <% if (
+                    typeof qrUploadFeedback !== "undefined" &&
+                    qrUploadFeedback
+                ) { %>
+                    <p
+                        class="<%= qrUploadFeedback.type === 'error' ? 'auth-error' : 'profile-field-hint' %>"
+                        role="status"
+                        aria-live="polite"
+                    ><%= qrUploadFeedback.message %></p>
+                <% } %>
+
+                <form
+                    id="host-upi-qr-form"
+                    class="profile-form"
+                    method="POST"
+                    action="/users/profile/upi-qr"
+                    enctype="multipart/form-data"
+                >
+                    <div class="form-group">
+                        <label for="host-upi-qr-image">UPI QR code image</label>
+                        <input
+                            type="file"
+                            id="host-upi-qr-image"
+                            name="upiQrImage"
+                            accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                            required
+                        >
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="submit-btn profile-save-btn"
+                    >
+                        Save QR Code
+                    </button>
+                </form>
+            </div>
+
+            <div class="profile-right">
+                <h4>QR code preview</h4>
+                <img
+                    id="host-upi-qr-preview"
+                    alt="UPI QR code preview"
+                    width="240"
+                    height="240"
+                    style="max-width: 100%; height: auto; object-fit: contain;"
+                    <% if (user.hostUpiQrImageUrl) { %>
+                        src="<%= user.hostUpiQrImageUrl %>"
+                    <% } else { %>
+                        hidden
+                    <% } %>
+                >
+            </div>
+        </section>
+
+        <script>
+            (() => {
+                const imageInput = document.getElementById("host-upi-qr-image");
+                const preview = document.getElementById("host-upi-qr-preview");
+                let previewObjectUrl = "";
+
+                imageInput.addEventListener("change", () => {
+                    const file = imageInput.files[0];
+
+                    if (!file) {
+                        return;
+                    }
+
+                    if (previewObjectUrl) {
+                        URL.revokeObjectURL(previewObjectUrl);
+                    }
+
+                    previewObjectUrl = URL.createObjectURL(file);
+                    preview.src = previewObjectUrl;
+                    preview.hidden = false;
+                });
+            })();
+        </script>
+    <% } %>
 
 </div>

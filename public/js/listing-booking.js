@@ -26,6 +26,107 @@
 
         confirmationPage.dataset.bookingInteractionsInitialized = "true";
 
+        const paymentDialog =
+            document.getElementById("booking-payment-dialog");
+        const paymentTrigger =
+            document.getElementById("booking-select-payment-method");
+        const paymentCloseButton =
+            document.getElementById("booking-payment-dialog-close");
+
+        if (
+            paymentDialog &&
+            paymentTrigger &&
+            paymentCloseButton &&
+            paymentDialog.dataset.paymentOptionsInitialized !== "true"
+        ) {
+            const paymentTabs = Array.from(
+                paymentDialog.querySelectorAll('[role="tab"]')
+            );
+            paymentDialog.dataset.paymentOptionsInitialized = "true";
+
+            function activatePaymentTab(tab, moveFocus) {
+                if (!tab) {
+                    return;
+                }
+
+                paymentTabs.forEach((paymentTab) => {
+                    const selected = paymentTab === tab;
+                    paymentTab.setAttribute("aria-selected", String(selected));
+                    paymentTab.tabIndex = selected ? 0 : -1;
+
+                    const panelId = paymentTab.getAttribute("aria-controls");
+                    const panel = panelId
+                        ? document.getElementById(panelId)
+                        : null;
+
+                    if (panel) {
+                        panel.hidden = !selected;
+                    }
+                });
+
+                if (moveFocus) {
+                    tab.focus();
+                }
+            }
+
+            paymentTrigger.addEventListener("click", function () {
+                const upiTab = paymentTabs.find(
+                    tab => tab.id === "booking-payment-tab-upi"
+                );
+                activatePaymentTab(upiTab, false);
+
+                if (!paymentDialog.open) {
+                    paymentDialog.showModal();
+                }
+
+                if (upiTab) {
+                    upiTab.focus();
+                }
+            });
+
+            paymentCloseButton.addEventListener("click", function () {
+                if (paymentDialog.open) {
+                    paymentDialog.close();
+                }
+            });
+
+            paymentTabs.forEach((tab, index) => {
+                tab.addEventListener("click", function () {
+                    activatePaymentTab(tab, false);
+                });
+
+                tab.addEventListener("keydown", function (event) {
+                    let nextIndex = index;
+
+                    if (event.key === "ArrowRight") {
+                        nextIndex = (index + 1) % paymentTabs.length;
+                    } else if (event.key === "ArrowLeft") {
+                        nextIndex =
+                            (index - 1 + paymentTabs.length) % paymentTabs.length;
+                    } else if (event.key === "Home") {
+                        nextIndex = 0;
+                    } else if (event.key === "End") {
+                        nextIndex = paymentTabs.length - 1;
+                    } else {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    activatePaymentTab(paymentTabs[nextIndex], true);
+                });
+            });
+
+            paymentDialog.addEventListener("click", function (event) {
+                if (event.target === paymentDialog && paymentDialog.open) {
+                    paymentDialog.close();
+                }
+            });
+
+            paymentDialog.addEventListener("close", function () {
+                paymentTrigger.focus();
+            });
+        }
+
         const routeMatch =
             window.location.pathname.match(/^\/listings\/([a-f\d]{24})\/booking$/i);
         const listingId =

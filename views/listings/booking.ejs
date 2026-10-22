@@ -124,9 +124,29 @@
                             Payment-method setup will be available once payment integration is connected.
                             No payment details have been collected or saved.
                         </p>
+                        <% if (hostUpiQrImageUrl) { %>
+                            <img
+                                class="booking-host-upi-qr"
+                                src="<%= hostUpiQrImageUrl %>"
+                                alt="UPI QR code provided by this listing's host"
+                                width="220"
+                                style="max-width: 100%; height: auto;"
+                                loading="lazy"
+                            >
+                        <% } else { %>
+                            <p class="booking-payment-note">
+                                This host has not provided a UPI QR code yet.
+                            </p>
+                        <% } %>
                     </details>
                     <div class="booking-step-actions">
-                        <button class="booking-continue-button" type="button">
+                        <button
+                            class="booking-continue-button"
+                            id="booking-select-payment-method"
+                            type="button"
+                            aria-haspopup="dialog"
+                            aria-controls="booking-payment-dialog"
+                        >
                             Select Payment Method
                         </button>
                     </div>
@@ -234,6 +254,500 @@
             </section>
         </aside>
     </div>
+
+    <style>
+        #booking-payment-dialog {
+            width: min(900px, calc(100% - 32px));
+            max-width: 900px;
+            max-height: min(760px, calc(100% - 32px));
+            padding: 0;
+            overflow: auto;
+            border: 0;
+            border-radius: 18px;
+            color: #222;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+        }
+
+        #booking-payment-dialog::backdrop {
+            background: rgba(20, 24, 32, 0.58);
+            backdrop-filter: blur(2px);
+        }
+
+        #booking-payment-dialog[open] {
+            display: grid;
+            grid-template-columns: minmax(210px, 0.72fr) minmax(0, 1.6fr);
+        }
+
+        #booking-payment-dialog .booking-payment-modal-summary {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 100%;
+            padding: 30px 26px;
+            background: linear-gradient(145deg, #ff385c, #e31c5f);
+            color: #fff;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-summary h2 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-summary p {
+            margin: 6px 0 0;
+            color: rgba(255, 255, 255, 0.86);
+            font-size: 0.9rem;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-total {
+            margin-top: 30px;
+            font-size: clamp(1.8rem, 5vw, 2.3rem);
+            font-weight: 700;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-total-label {
+            display: block;
+            margin-top: 6px;
+            color: rgba(255, 255, 255, 0.86);
+            font-size: 0.88rem;
+            font-weight: 500;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-main {
+            min-width: 0;
+            padding: 26px;
+            background: #fff;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-header h2 {
+            margin: 0;
+            color: #222;
+            font-size: 1.35rem;
+            font-weight: 600;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-close {
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e5e7eb;
+            border-radius: 50%;
+            background: #fff;
+            color: #333;
+            font-size: 1.45rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-close:hover {
+            background: #f8f9fa;
+        }
+
+        #booking-payment-dialog .booking-payment-modal-close:focus-visible,
+        #booking-payment-dialog [role="tab"]:focus-visible {
+            outline: 2px solid #536175;
+            outline-offset: 3px;
+        }
+
+        #booking-payment-dialog .booking-payment-options {
+            display: flex;
+            gap: 6px;
+            margin: 0 0 20px;
+            padding: 0 0 10px;
+            overflow-x: auto;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        #booking-payment-dialog [role="tab"] {
+            flex: 0 0 auto;
+            min-height: 42px;
+            padding: 9px 12px;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: #555;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        #booking-payment-dialog [role="tab"]:hover {
+            background: #f8f9fa;
+        }
+
+        #booking-payment-dialog [role="tab"][aria-selected="true"] {
+            background: #fff1f3;
+            color: #e31c5f;
+            box-shadow: inset 0 -2px #ff385c;
+        }
+
+        #booking-payment-dialog .booking-payment-tab-panel[hidden] {
+            display: none;
+        }
+
+        #booking-payment-dialog .booking-payment-upi-content {
+            display: grid;
+            grid-template-columns: minmax(140px, 190px) minmax(0, 1fr);
+            align-items: center;
+            gap: 24px;
+        }
+
+        #booking-payment-dialog .booking-payment-qr-frame {
+            display: grid;
+            min-height: 190px;
+            place-items: center;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        #booking-payment-dialog .booking-payment-qr {
+            display: block;
+            width: 100%;
+            max-width: 170px;
+            height: auto;
+            object-fit: contain;
+        }
+
+        #booking-payment-dialog .booking-payment-qr-missing {
+            margin: 0;
+            color: #555;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        #booking-payment-dialog .booking-payment-apps {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        #booking-payment-dialog .booking-payment-app {
+            display: flex;
+            min-width: 0;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        #booking-payment-dialog .booking-payment-app-mark {
+            display: inline-flex;
+            width: 38px;
+            height: 38px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fff;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        #booking-payment-dialog .booking-payment-app-mark-gpay {
+            color: #4285f4;
+        }
+
+        #booking-payment-dialog .booking-payment-app-mark-phonepe {
+            border-color: #5f259f;
+            background: #5f259f;
+            color: #fff;
+            font-size: 1.15rem;
+        }
+
+        #booking-payment-dialog .booking-payment-app-mark-paytm {
+            color: #00baf2;
+            font-size: 0.72rem;
+        }
+
+        #booking-payment-dialog .booking-payment-app-mark-bhim {
+            color: #e77817;
+        }
+
+        #booking-payment-dialog .booking-payment-app-disclaimer,
+        #booking-payment-dialog .booking-payment-coming-soon {
+            margin: 18px 0 0;
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        #booking-payment-dialog .booking-payment-coming-soon {
+            display: grid;
+            min-height: 170px;
+            place-items: center;
+            margin: 0;
+            border: 1px dashed #d5d8de;
+            border-radius: 12px;
+            background: #f8f9fa;
+            color: #444;
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 640px) {
+            #booking-payment-dialog {
+                width: calc(100% - 20px);
+                max-height: calc(100% - 20px);
+                border-radius: 14px;
+            }
+
+            #booking-payment-dialog[open] {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            #booking-payment-dialog .booking-payment-modal-summary {
+                min-height: 0;
+                padding: 18px 20px;
+            }
+
+            #booking-payment-dialog .booking-payment-modal-total {
+                margin-top: 14px;
+                font-size: 1.75rem;
+            }
+
+            #booking-payment-dialog .booking-payment-modal-main {
+                padding: 18px;
+            }
+
+            #booking-payment-dialog .booking-payment-options {
+                margin-bottom: 16px;
+            }
+
+            #booking-payment-dialog .booking-payment-upi-content {
+                grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.2fr);
+                gap: 14px;
+            }
+
+            #booking-payment-dialog .booking-payment-qr-frame {
+                min-height: 140px;
+                padding: 8px;
+            }
+
+            #booking-payment-dialog .booking-payment-apps {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 8px;
+            }
+
+            #booking-payment-dialog .booking-payment-app-mark {
+                width: 32px;
+                height: 32px;
+                border-radius: 10px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            #booking-payment-dialog .booking-payment-upi-content {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            #booking-payment-dialog .booking-payment-qr-frame {
+                width: min(190px, 100%);
+                justify-self: center;
+            }
+
+            #booking-payment-dialog .booking-payment-apps {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+
+    <dialog
+        class="booking-payment-dialog"
+        id="booking-payment-dialog"
+        aria-labelledby="booking-payment-dialog-heading"
+    >
+        <div class="booking-payment-modal-summary">
+            <div>
+                <h2><%= listing.title %></h2>
+                <p><%= listing.location || "Your booking" %></p>
+            </div>
+            <div class="booking-payment-modal-total">
+                ₹<%= formatRupees(subtotal) %>
+                <span class="booking-payment-modal-total-label">Total (INR)</span>
+            </div>
+        </div>
+
+        <div class="booking-payment-modal-main">
+            <div class="booking-payment-modal-header">
+                <h2 id="booking-payment-dialog-heading">Payment Options</h2>
+                <button
+                    class="booking-payment-modal-close"
+                    type="button"
+                    id="booking-payment-dialog-close"
+                    aria-label="Close payment options"
+                >&times;</button>
+            </div>
+
+            <div
+                class="booking-payment-options"
+                role="tablist"
+                aria-label="Payment options"
+            >
+                <button
+                    type="button"
+                    id="booking-payment-tab-upi"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="booking-payment-panel-upi"
+                    tabindex="0"
+                >UPI</button>
+                <button
+                    type="button"
+                    id="booking-payment-tab-cards"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="booking-payment-panel-cards"
+                    tabindex="-1"
+                >Cards</button>
+                <button
+                    type="button"
+                    id="booking-payment-tab-emi"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="booking-payment-panel-emi"
+                    tabindex="-1"
+                >Credit Card EMI</button>
+                <button
+                    type="button"
+                    id="booking-payment-tab-netbanking"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="booking-payment-panel-netbanking"
+                    tabindex="-1"
+                >Netbanking</button>
+            </div>
+
+            <section
+                class="booking-payment-tab-panel"
+                id="booking-payment-panel-upi"
+                role="tabpanel"
+                aria-labelledby="booking-payment-tab-upi"
+                tabindex="0"
+            >
+                <div class="booking-payment-upi-content">
+                    <div class="booking-payment-qr-frame">
+                        <% if (hostUpiQrImageUrl) { %>
+                            <img
+                                class="booking-payment-qr"
+                                src="<%= hostUpiQrImageUrl %>"
+                                alt="UPI QR code provided by this listing's host"
+                                loading="lazy"
+                            >
+                        <% } else { %>
+                            <p class="booking-payment-qr-missing">
+                                The host has not uploaded a UPI QR code yet.
+                            </p>
+                        <% } %>
+                    </div>
+
+                    <div>
+                        <div class="booking-payment-apps" aria-label="UPI app references">
+                            <div class="booking-payment-app">
+                                <span class="booking-payment-app-mark booking-payment-app-mark-gpay">
+                                    <img
+                                        src="https://cdn.jsdelivr.net/npm/simple-icons@13.21.0/icons/googlepay.svg"
+                                        alt="Google Pay logo"
+                                        width="24"
+                                        height="24"
+                                        style="width: 24px; height: 24px; object-fit: contain;"
+                                        onerror="this.hidden = true; this.nextElementSibling.hidden = false;"
+                                    >
+                                    <span aria-hidden="true" hidden>G</span>
+                                </span>
+                                <span>Google Pay</span>
+                            </div>
+                            <div class="booking-payment-app">
+                                <span class="booking-payment-app-mark booking-payment-app-mark-phonepe">
+                                    <img
+                                        src="https://cdn.jsdelivr.net/npm/simple-icons@13.21.0/icons/phonepe.svg"
+                                        alt="PhonePe logo"
+                                        width="24"
+                                        height="24"
+                                        style="width: 24px; height: 24px; object-fit: contain;"
+                                        onerror="this.hidden = true; this.nextElementSibling.hidden = false;"
+                                    >
+                                    <span aria-hidden="true" hidden>पे</span>
+                                </span>
+                                <span>PhonePe</span>
+                            </div>
+                            <div class="booking-payment-app">
+                                <span class="booking-payment-app-mark booking-payment-app-mark-paytm">
+                                    <img
+                                        src="https://cdn.jsdelivr.net/npm/simple-icons@13.21.0/icons/paytm.svg"
+                                        alt="Paytm logo"
+                                        width="24"
+                                        height="24"
+                                        style="width: 24px; height: 24px; object-fit: contain;"
+                                        onerror="this.hidden = true; this.nextElementSibling.hidden = false;"
+                                    >
+                                    <span aria-hidden="true" hidden>paytm</span>
+                                </span>
+                                <span>Paytm</span>
+                            </div>
+                            <div class="booking-payment-app">
+                                <span class="booking-payment-app-mark booking-payment-app-mark-bhim" aria-hidden="true">BHIM</span>
+                                <span>BHIM</span>
+                            </div>
+                        </div>
+                        <p class="booking-payment-app-disclaimer">
+                            App references are for identification only. Payment integration is not active.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="booking-payment-tab-panel"
+                id="booking-payment-panel-cards"
+                role="tabpanel"
+                aria-labelledby="booking-payment-tab-cards"
+                tabindex="0"
+                hidden
+            >
+                <p class="booking-payment-coming-soon">Coming soon</p>
+            </section>
+            <section
+                class="booking-payment-tab-panel"
+                id="booking-payment-panel-emi"
+                role="tabpanel"
+                aria-labelledby="booking-payment-tab-emi"
+                tabindex="0"
+                hidden
+            >
+                <p class="booking-payment-coming-soon">Coming soon</p>
+            </section>
+            <section
+                class="booking-payment-tab-panel"
+                id="booking-payment-panel-netbanking"
+                role="tabpanel"
+                aria-labelledby="booking-payment-tab-netbanking"
+                tabindex="0"
+                hidden
+            >
+                <p class="booking-payment-coming-soon">Coming soon</p>
+            </section>
+        </div>
+    </dialog>
 </main>
 
 <script src="/js/listing-booking.js"></script>
@@ -257,6 +771,86 @@
 
         if (!bookingPage || !travelYes || !travelNo) {
             return;
+        }
+
+        const selectPaymentMethod =
+            document.getElementById("booking-select-payment-method");
+        const paymentDialog =
+            document.getElementById("booking-payment-dialog");
+        const closePaymentDialog =
+            document.getElementById("booking-payment-dialog-close");
+        const paymentTabs = Array.from(
+            document.querySelectorAll(
+                "#booking-payment-dialog [role='tab']"
+            )
+        );
+
+        function activatePaymentTab(tab, moveFocus) {
+            if (!tab || !paymentDialog) {
+                return;
+            }
+
+            paymentTabs.forEach((paymentTab) => {
+                const selected = paymentTab === tab;
+                paymentTab.setAttribute("aria-selected", String(selected));
+                paymentTab.tabIndex = selected ? 0 : -1;
+
+                const panel = document.getElementById(
+                    paymentTab.getAttribute("aria-controls")
+                );
+
+                if (panel) {
+                    panel.hidden = !selected;
+                }
+            });
+
+            if (moveFocus) {
+                tab.focus();
+            }
+        }
+
+        if (selectPaymentMethod && paymentDialog && closePaymentDialog) {
+            selectPaymentMethod.addEventListener("click", function () {
+                activatePaymentTab(paymentTabs[0], false);
+                paymentDialog.showModal();
+                paymentTabs[0].focus();
+            });
+
+            closePaymentDialog.addEventListener("click", function () {
+                paymentDialog.close();
+            });
+
+            paymentTabs.forEach((tab, index) => {
+                tab.addEventListener("click", function () {
+                    activatePaymentTab(tab, false);
+                });
+
+                tab.addEventListener("keydown", function (event) {
+                    let nextIndex = index;
+
+                    if (event.key === "ArrowRight") {
+                        nextIndex = (index + 1) % paymentTabs.length;
+                    } else if (event.key === "ArrowLeft") {
+                        nextIndex =
+                            (index - 1 + paymentTabs.length) % paymentTabs.length;
+                    } else if (event.key === "Home") {
+                        nextIndex = 0;
+                    } else if (event.key === "End") {
+                        nextIndex = paymentTabs.length - 1;
+                    } else {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    activatePaymentTab(paymentTabs[nextIndex], true);
+                });
+            });
+
+            paymentDialog.addEventListener("click", function (event) {
+                if (event.target === paymentDialog) {
+                    paymentDialog.close();
+                }
+            });
         }
 
         const currentBookingLocation =

@@ -4865,3 +4865,9 @@ CRUISE RESPONSIVE DESIGN
         height: 36px;
     }
 }
+
+#booking-payment-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+}
