@@ -971,6 +971,287 @@ router.get("/dashboard", async (req, res) => {
 
 });
 
+router.post("/dashboard/keep-off", async (req, res) => {
+    if (!req.session.userId) {
+        return res.status(401).json({
+            success: false,
+            message: "Please log in to manage unavailable dates."
+        });
+    }
+
+    try {
+        const user = await User.findById(req.session.userId);
+
+        if (!user) {
+            req.session.destroy();
+            return res.status(401).json({
+                success: false,
+                message: "Please log in to manage unavailable dates."
+            });
+        }
+
+        if (!user.isHost) {
+            return res.status(403).json({
+                success: false,
+                message: "Only hosts can manage unavailable dates."
+            });
+        }
+
+        const body = req.body || {};
+        const propertyId =
+            typeof body.propertyId === "string"
+                ? body.propertyId
+                : body.listingId;
+        const from =
+            typeof body.from === "string"
+                ? body.from
+                : body.fromDate;
+        const to =
+            typeof body.to === "string"
+                ? body.to
+                : body.toDate;
+
+        if (
+            typeof propertyId !== "string" ||
+            !/^[a-f\d]{24}$/i.test(propertyId)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Select a valid property."
+            });
+        }
+
+        function isValidDateOnly(value) {
+            if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                return false;
+            }
+
+            const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+            return (
+                Number.isFinite(timestamp) &&
+                new Date(timestamp).toISOString().slice(0, 10) === value
+            );
+        }
+
+        if (!isValidDateOnly(from) || !isValidDateOnly(to)) {
+            return res.status(400).json({
+                success: false,
+                message: "Enter valid From and To dates."
+            });
+        }
+
+        if (from > to) {
+            return res.status(400).json({
+                success: false,
+                message: "From date must be on or before To date."
+            });
+        }
+
+        const listing = await Listing.findOne({
+            _id: propertyId,
+            host: user._id
+        });
+
+        if (!listing) {
+            return res.status(404).json({
+                success: false,
+                message: "Property not found for this host."
+            });
+        }
+
+        const ranges = Array.isArray(listing.unavailableDateRanges)
+            ? listing.unavailableDateRanges
+                .filter(range =>
+                    range &&
+                    isValidDateOnly(range.from) &&
+                    isValidDateOnly(range.to) &&
+                    range.from <= range.to
+                )
+                .map(range => ({
+                    from: range.from,
+                    to: range.to
+                }))
+            : [];
+        let mergedFrom = from;
+        let mergedTo = to;
+        let merged = true;
+
+        while (merged) {
+            merged = false;
+
+            for (let index = ranges.length - 1; index >= 0; index -= 1) {
+                const range = ranges[index];
+
+                if (range.from <= mergedTo && range.to >= mergedFrom) {
+                    mergedFrom = range.from < mergedFrom ? range.from : mergedFrom;
+                    mergedTo = range.to > mergedTo ? range.to : mergedTo;
+                    ranges.splice(index, 1);
+                    merged = true;
+                }
+            }
+        }
+
+        ranges.push({
+            from: mergedFrom,
+            to: mergedTo
+        });
+        ranges.sort((first, second) => first.from.localeCompare(second.from));
+
+        listing.unavailableDateRanges = ranges;
+        await listing.save();
+
+        return res.json({
+            success: true,
+            message: "Unavailable dates saved.",
+            unavailableDateRanges: listing.unavailableDateRanges
+        });
+    } catch (error) {
+        console.error("Unable to save host unavailable dates.", error);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to save unavailable dates. Please try again."
+        });
+    }
+});
+
+router.post("/dashboard/keep-off/remove", async (req, res) => {
+    if (!req.session.userId) {
+        return res.status(401).json({
+            success: false,
+            message: "Please log in to manage unavailable dates."
+        });
+    }
+
+    try {
+        const user = await User.findById(req.session.userId);
+
+        if (!user) {
+            req.session.destroy();
+            return res.status(401).json({
+                success: false,
+                message: "Please log in to manage unavailable dates."
+            });
+        }
+
+        if (!user.isHost) {
+            return res.status(403).json({
+                success: false,
+                message: "Only hosts can manage unavailable dates."
+            });
+        }
+
+        const body = req.body || {};
+        const propertyId =
+            typeof body.propertyId === "string"
+                ? body.propertyId
+                : body.listingId;
+        const from =
+            typeof body.from === "string"
+                ? body.from
+                : body.fromDate;
+        const to =
+            typeof body.to === "string"
+                ? body.to
+                : body.toDate;
+
+        if (
+            typeof propertyId !== "string" ||
+            !/^[a-f\d]{24}$/i.test(propertyId)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Select a valid property."
+            });
+        }
+
+        function isValidDateOnly(value) {
+            if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                return false;
+            }
+
+            const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+            return (
+                Number.isFinite(timestamp) &&
+                new Date(timestamp).toISOString().slice(0, 10) === value
+            );
+        }
+
+        if (!isValidDateOnly(from) || !isValidDateOnly(to)) {
+            return res.status(400).json({
+                success: false,
+                message: "Enter valid From and To dates."
+            });
+        }
+
+        if (from > to) {
+            return res.status(400).json({
+                success: false,
+                message: "From date must be on or before To date."
+            });
+        }
+
+        const listing = await Listing.findOne({
+            _id: propertyId,
+            host: user._id
+        });
+
+        if (!listing) {
+            return res.status(404).json({
+                success: false,
+                message: "Property not found for this host."
+            });
+        }
+
+        const hasSavedRange = Array.isArray(listing.unavailableDateRanges)
+            ? listing.unavailableDateRanges.some(
+                range => range && range.from === from && range.to === to
+            )
+            : false;
+
+        if (!hasSavedRange) {
+            return res.status(404).json({
+                success: false,
+                message: "That unavailable period is no longer saved."
+            });
+        }
+
+        const updatedListing = await Listing.findOneAndUpdate(
+            {
+                _id: listing._id,
+                host: user._id,
+                unavailableDateRanges: {
+                    $elemMatch: { from, to }
+                }
+            },
+            {
+                $pull: {
+                    unavailableDateRanges: { from, to }
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedListing) {
+            return res.status(404).json({
+                success: false,
+                message: "That unavailable period is no longer saved."
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "Unavailable period removed.",
+            unavailableDateRanges: updatedListing.unavailableDateRanges
+        });
+    } catch (error) {
+        console.error("Unable to remove host unavailable dates.", error);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to remove unavailable dates. Please try again."
+        });
+    }
+});
+
 
 // ========================================
 // CREATE HOST PROFILE

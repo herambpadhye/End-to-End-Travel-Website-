@@ -1,6 +1,40 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
+function isValidDateOnly(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false;
+    }
+
+    const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+    return (
+        Number.isFinite(timestamp) &&
+        new Date(timestamp).toISOString().slice(0, 10) === value
+    );
+}
+
+const unavailableDateRangeSchema = new Schema(
+    {
+        from: {
+            type: String,
+            required: true,
+            validate: {
+                validator: isValidDateOnly,
+                message: "Unavailable start date must be a valid YYYY-MM-DD date."
+            }
+        },
+        to: {
+            type: String,
+            required: true,
+            validate: {
+                validator: isValidDateOnly,
+                message: "Unavailable end date must be a valid YYYY-MM-DD date."
+            }
+        }
+    },
+    { _id: false }
+);
+
 const listingschema = new Schema({
 
     title: {
@@ -86,6 +120,11 @@ const listingschema = new Schema({
     amenities: {
         type: [String],
         default: []
+    },
+
+    unavailableDateRanges: {
+        type: [unavailableDateRangeSchema],
+        default: undefined
     },
 
     // Map coordinates for this particular listing

@@ -327,6 +327,174 @@
         box-shadow: 0 8px 18px rgba(0, 0, 0, 0.03);
     }
 
+    .keep-off-card {
+        width: min(100%, 720px);
+        padding: 24px;
+        border: 1px solid rgba(34, 34, 34, 0.08);
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.03);
+        text-align: left;
+    }
+
+    .keep-off-card h2 {
+        margin: 0 0 18px;
+        color: #222;
+        font-size: 21px;
+    }
+
+    .keep-off-form {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        align-items: end;
+    }
+
+    .keep-off-field {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .keep-off-field label {
+        color: #555;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .keep-off-field select,
+    .keep-off-field input {
+        width: 100%;
+        min-width: 0;
+        height: 42px;
+        padding: 0 10px;
+        border: 1px solid rgba(34, 34, 34, 0.16);
+        border-radius: 10px;
+        background: #fff;
+        color: #222;
+        font: inherit;
+    }
+
+    .keep-off-field select:focus-visible,
+    .keep-off-field input:focus-visible,
+    .keep-off-done:focus-visible {
+        outline: 2px solid #ff385c;
+        outline-offset: 2px;
+    }
+
+    .keep-off-done {
+        min-height: 42px;
+        padding: 9px 18px;
+        border: 1px solid #ff385c;
+        border-radius: 10px;
+        background: #ff385c;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .keep-off-done:hover {
+        border-color: #e03150;
+        background: #e03150;
+    }
+
+    .keep-off-done:disabled {
+        cursor: wait;
+        opacity: 0.7;
+    }
+
+    .keep-off-periods {
+        margin: 20px 0 0;
+        color: #555;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .keep-off-periods h3 {
+        margin: 0 0 6px;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .keep-off-periods ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .keep-off-period-item {
+        padding: 3px 0;
+    }
+
+    .keep-off-make-available {
+        margin-left: 10px;
+        padding: 4px 9px;
+        border: 1px solid rgba(34, 34, 34, 0.16);
+        border-radius: 7px;
+        background: #fff;
+        color: #e03150;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .keep-off-make-available:hover:not(:disabled) {
+        border-color: #ff385c;
+        background: #fff5f6;
+    }
+
+    .keep-off-make-available:focus-visible {
+        outline: 2px solid #ff385c;
+        outline-offset: 2px;
+    }
+
+    .keep-off-make-available:disabled {
+        cursor: wait;
+        opacity: 0.65;
+    }
+
+    .dashboard-shell.dark-mode .keep-off-make-available {
+        border-color: var(--dashboard-border);
+        background: var(--dashboard-surface);
+        color: #ff8799;
+    }
+
+    .keep-off-status {
+        min-height: 1.4em;
+        margin: 12px 0 0;
+        color: #444;
+        font-size: 14px;
+    }
+
+    .keep-off-status[data-state="success"] {
+        color: #18794e;
+    }
+
+    .keep-off-status[data-state="error"] {
+        color: #b42318;
+    }
+
+    .dashboard-shell.dark-mode .keep-off-card,
+    .dashboard-shell.dark-mode .keep-off-field select,
+    .dashboard-shell.dark-mode .keep-off-field input {
+        border-color: var(--dashboard-border);
+        background: var(--dashboard-surface);
+        color: var(--dashboard-text);
+    }
+
+    .dashboard-shell.dark-mode .keep-off-card h2,
+    .dashboard-shell.dark-mode .keep-off-periods h3 {
+        color: var(--dashboard-text);
+    }
+
+    .dashboard-shell.dark-mode .keep-off-field label,
+    .dashboard-shell.dark-mode .keep-off-periods,
+    .dashboard-shell.dark-mode .keep-off-status {
+        color: var(--dashboard-muted);
+    }
+
     .services-heading {
         margin: 0 0 22px;
         font-size: 24px;
@@ -421,6 +589,14 @@
     @media (max-width: 640px) {
         .services-visual {
             min-height: 220px;
+        }
+
+        .keep-off-card {
+            padding: 18px;
+        }
+
+        .keep-off-form {
+            grid-template-columns: minmax(0, 1fr);
         }
     }
 
@@ -683,7 +859,41 @@
 
         <section class="dashboard-panel" data-panel="booking-info">
             <div class="placeholder-panel">
-                Booking info
+                <div class="keep-off-card">
+                    <h2>Keep off</h2>
+                    <form class="keep-off-form" id="keepOffForm">
+                        <div class="keep-off-field">
+                            <label for="keepOffProperty">Select your property</label>
+                            <select id="keepOffProperty" name="propertyId" required>
+                                <option value="">Select a property</option>
+                                <% (typeof listings !== "undefined" ? listings : []).forEach((listing) => { %>
+                                    <option
+                                        value="<%= listing._id %>"
+                                        data-unavailable-ranges="<%= JSON.stringify(listing.unavailableDateRanges || []) %>"
+                                    ><%= listing.title %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+
+                        <div class="keep-off-field">
+                            <label for="keepOffFrom">From</label>
+                            <input id="keepOffFrom" name="from" type="date" required>
+                        </div>
+
+                        <div class="keep-off-field">
+                            <label for="keepOffTo">To</label>
+                            <input id="keepOffTo" name="to" type="date" required>
+                        </div>
+
+                        <button class="keep-off-done" type="submit">Done</button>
+                    </form>
+
+                    <div class="keep-off-periods" id="keepOffPeriods" aria-live="polite">
+                        <h3>Unavailable periods</h3>
+                        <p>Select a property to view its blocked dates.</p>
+                    </div>
+                    <p class="keep-off-status" id="keepOffStatus" role="status" aria-live="polite"></p>
+                </div>
             </div>
         </section>
 
@@ -1202,4 +1412,243 @@
             );
         }
     });
+</script>
+
+<script>
+    (() => {
+        const form = document.getElementById("keepOffForm");
+
+        if (!form || form.dataset.initialized === "true") {
+            return;
+        }
+
+        form.dataset.initialized = "true";
+
+        const propertySelect = document.getElementById("keepOffProperty");
+        const fromInput = document.getElementById("keepOffFrom");
+        const toInput = document.getElementById("keepOffTo");
+        const periodsContainer = document.getElementById("keepOffPeriods");
+        const status = document.getElementById("keepOffStatus");
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        function displayUnavailablePeriods(
+            ranges,
+            emptyMessageText = "No unavailable dates set.",
+            propertyId = propertySelect.value
+        ) {
+            const heading = document.createElement("h3");
+            heading.textContent = "Unavailable periods";
+            periodsContainer.replaceChildren(heading);
+
+            if (!ranges.length) {
+                const emptyMessage = document.createElement("p");
+                emptyMessage.textContent = emptyMessageText;
+                periodsContainer.appendChild(emptyMessage);
+                return;
+            }
+
+            const list = document.createElement("ul");
+            ranges.forEach((range) => {
+                const item = document.createElement("li");
+                item.className = "keep-off-period-item";
+                const dates = document.createElement("span");
+                dates.textContent = `${range.from} to ${range.to}`;
+                const removeButton = document.createElement("button");
+                removeButton.className = "keep-off-make-available";
+                removeButton.type = "button";
+                removeButton.textContent = "Make available";
+                removeButton.dataset.removeUnavailablePeriod = "true";
+                removeButton.dataset.propertyId = propertyId;
+                removeButton.dataset.from = range.from;
+                removeButton.dataset.to = range.to;
+                removeButton.setAttribute(
+                    "aria-label",
+                    `Make ${range.from} to ${range.to} available`
+                );
+                item.append(dates, removeButton);
+                list.appendChild(item);
+            });
+            periodsContainer.appendChild(list);
+        }
+
+        propertySelect.addEventListener("change", () => {
+            const selectedOption =
+                propertySelect.options[propertySelect.selectedIndex];
+
+            if (!selectedOption || !selectedOption.value) {
+                displayUnavailablePeriods(
+                    [],
+                    "Select a property to view its blocked dates."
+                );
+                setStatus("");
+                return;
+            }
+
+            try {
+                const ranges = JSON.parse(
+                    selectedOption.dataset.unavailableRanges || "[]"
+                );
+                displayUnavailablePeriods(
+                    Array.isArray(ranges) ? ranges : [],
+                    "No unavailable dates set.",
+                    selectedOption.value
+                );
+                setStatus("");
+            } catch (error) {
+                console.error("Unable to read unavailable property dates:", error);
+                displayUnavailablePeriods(
+                    [],
+                    "Unable to display saved unavailable dates."
+                );
+                setStatus("Unable to display saved unavailable dates.", "error");
+            }
+        });
+
+        fromInput.addEventListener("change", () => {
+            toInput.min = fromInput.value;
+            toInput.setCustomValidity("");
+            if (toInput.value && toInput.value < fromInput.value) {
+                toInput.value = "";
+            }
+        });
+
+        toInput.addEventListener("input", () => {
+            toInput.setCustomValidity("");
+        });
+
+        function setStatus(message, state) {
+            status.textContent = message;
+            status.dataset.state = state || "";
+        }
+
+        periodsContainer.addEventListener("click", async (event) => {
+            const removeButton = event.target.closest(
+                "[data-remove-unavailable-period]"
+            );
+            if (!removeButton || removeButton.disabled) {
+                return;
+            }
+
+            const { propertyId, from, to } = removeButton.dataset;
+            if (!propertyId || !from || !to) {
+                setStatus(
+                    "Unable to identify the selected unavailable period.",
+                    "error"
+                );
+                return;
+            }
+
+            removeButton.disabled = true;
+            setStatus("Making selected dates available...");
+
+            try {
+                const response = await fetch(
+                    "/users/dashboard/keep-off/remove",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded"
+                        },
+                        body: new URLSearchParams({ propertyId, from, to })
+                    }
+                );
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(
+                        result.message || "Unable to remove unavailable dates."
+                    );
+                }
+
+                const selectedOption = Array.from(propertySelect.options).find(
+                    (option) => option.value === propertyId
+                );
+                if (selectedOption) {
+                    const ranges = Array.isArray(result.unavailableDateRanges)
+                        ? result.unavailableDateRanges
+                        : [];
+                    selectedOption.dataset.unavailableRanges =
+                        JSON.stringify(ranges);
+
+                    if (propertySelect.value === propertyId) {
+                        displayUnavailablePeriods(
+                            ranges,
+                            "No unavailable dates set.",
+                            propertyId
+                        );
+                    }
+                }
+
+                setStatus("Selected dates are now available.", "success");
+            } catch (error) {
+                console.error("Unable to remove unavailable dates:", error);
+                setStatus(
+                    error.message ||
+                        "Unable to remove unavailable dates. Please try again.",
+                    "error"
+                );
+                removeButton.disabled = false;
+            }
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            if (!form.reportValidity()) {
+                return;
+            }
+
+            if (toInput.value < fromInput.value) {
+                toInput.setCustomValidity("To date must be on or after From date.");
+                toInput.reportValidity();
+                return;
+            }
+            toInput.setCustomValidity("");
+
+            submitButton.disabled = true;
+            setStatus("Saving unavailable dates...");
+
+            try {
+                const response = await fetch("/users/dashboard/keep-off", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: new URLSearchParams(new FormData(form))
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(
+                        result.message || "Unable to save unavailable dates."
+                    );
+                }
+
+                const selectedOption =
+                    propertySelect.options[propertySelect.selectedIndex];
+                selectedOption.dataset.unavailableRanges =
+                    JSON.stringify(result.unavailableDateRanges || []);
+                displayUnavailablePeriods(
+                    result.unavailableDateRanges || [],
+                    "No unavailable dates set.",
+                    selectedOption.value
+                );
+                setStatus(
+                    result.message || "Unavailable dates saved.",
+                    "success"
+                );
+                fromInput.value = "";
+                toInput.value = "";
+                toInput.min = "";
+            } catch (error) {
+                console.error("Unable to save unavailable dates:", error);
+                setStatus(
+                    error.message || "Unable to save unavailable dates. Please try again.",
+                    "error"
+                );
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    })();
 </script>

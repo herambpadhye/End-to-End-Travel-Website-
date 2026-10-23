@@ -13,6 +13,8 @@
   <% } else { %>
 
     <%
+        const selectedBooking =
+            typeof bookingSelection !== "undefined" ? bookingSelection : {};
         const stickyReviewCount =
             Array.isArray(reviews) ? reviews.length : 0;
         const stickyAverageRating =
@@ -192,6 +194,97 @@
 
         .booking-date-field input:focus {
             outline: none;
+        }
+
+        .booking-calendar {
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            background: #fff;
+        }
+
+        .booking-calendar[hidden] {
+            display: none;
+        }
+
+        .booking-calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .booking-calendar-header h3 {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .booking-calendar-header button,
+        .booking-calendar-day {
+            min-width: 36px;
+            min-height: 36px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: #222;
+            font: inherit;
+        }
+
+        .booking-calendar-header button {
+            cursor: pointer;
+        }
+
+        .booking-calendar-header button:focus-visible,
+        .booking-calendar-day:focus-visible {
+            outline: 2px solid #536175;
+            outline-offset: 2px;
+        }
+
+        .booking-calendar-weekdays,
+        .booking-calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 3px;
+            text-align: center;
+        }
+
+        .booking-calendar-weekdays {
+            margin-bottom: 4px;
+            color: #555;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .booking-calendar-weekdays span {
+            padding: 5px 0;
+        }
+
+        .booking-calendar-day {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .booking-calendar-day:hover:not(:disabled) {
+            background: #f3f4f6;
+        }
+
+        .booking-calendar-day.is-selected {
+            background: #ff385c;
+            color: #fff;
+        }
+
+        .booking-calendar-day:disabled,
+        .booking-calendar-day.is-unavailable {
+            background: #f3f4f6;
+            color: #a1a1aa;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+
+        .booking-calendar-day.is-outside-month {
+            visibility: hidden;
         }
 
         .booking-date-row:focus-within,
@@ -540,7 +633,7 @@
                 class="listing-sticky-submit"
                 id="listing-sticky-book-now"
                 type="button"
-            >Book Now!</button>
+            >Check Availability</button>
         </div>
     </nav>
 
@@ -667,7 +760,12 @@
                         id="listing-booking-form"
                         method="GET"
                         action="/listings/<%= listing._id %>/booking"
+                        data-unavailable-date-ranges="<%= JSON.stringify(unavailableDateRanges || []) %>"
+                        novalidate
                     >
+                        <% if (availabilityError) { %>
+                            <p class="error-box" role="alert"><%= availabilityError %></p>
+                        <% } %>
                         <p
                             class="booking-price-summary"
                             id="booking-price-summary"
@@ -682,7 +780,14 @@
                                 <input
                                     id="booking-check-in"
                                     name="checkIn"
-                                    type="date"
+                                    type="text"
+                                    value="<%= selectedBooking.checkIn || '' %>"
+                                    placeholder="Add date"
+                                    autocomplete="off"
+                                    aria-haspopup="dialog"
+                                    aria-expanded="false"
+                                    aria-controls="booking-calendar-check-in"
+                                    readonly
                                     required
                                 >
                             </div>
@@ -691,11 +796,45 @@
                                 <input
                                     id="booking-check-out"
                                     name="checkOut"
-                                    type="date"
+                                    type="text"
+                                    value="<%= selectedBooking.checkOut || '' %>"
+                                    placeholder="Add date"
+                                    autocomplete="off"
+                                    aria-haspopup="dialog"
+                                    aria-expanded="false"
+                                    aria-controls="booking-calendar-check-out"
+                                    readonly
                                     required
                                 >
                             </div>
                         </div>
+                        <% ["check-in", "check-out"].forEach(function(calendarType) { %>
+                            <div
+                                class="booking-calendar"
+                                id="booking-calendar-<%= calendarType %>"
+                                role="dialog"
+                                aria-label="Choose <%= calendarType === 'check-in' ? 'check-in' : 'checkout' %> date"
+                                data-calendar-for="<%= calendarType === 'check-in' ? 'checkIn' : 'checkOut' %>"
+                                hidden
+                            >
+                                <div class="booking-calendar-header">
+                                    <button type="button" data-calendar-month-change="-1" aria-label="Previous month">&#8249;</button>
+                                    <h3 data-calendar-month-label></h3>
+                                    <button type="button" data-calendar-month-change="1" aria-label="Next month">&#8250;</button>
+                                </div>
+                                <div class="booking-calendar-weekdays" aria-hidden="true">
+                                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                                </div>
+                                <div class="booking-calendar-days" data-calendar-days></div>
+                            </div>
+                        <% }); %>
+
+                        <p
+                            id="booking-availability-message"
+                            role="status"
+                            aria-live="polite"
+                            hidden
+                        ></p>
 
                         <div class="booking-guests">
                             <span class="booking-guests-label">GUESTS</span>
@@ -707,7 +846,7 @@
                                 aria-controls="booking-guest-popover"
                             >
                                 <span id="booking-guests-summary" class="booking-guests-summary">
-                                    4 guests · 0 pets
+                                    <%= (Number(selectedBooking.adults) || 4) + (Number(selectedBooking.children) || 0) %> guests · <%= Number(selectedBooking.pets) || 0 %> pets
                                 </span>
                             </button>
 
@@ -722,7 +861,7 @@
                                     <span class="booking-guest-type">Adults</span>
                                     <span class="booking-guest-control">
                                         <button type="button" data-guest-change="-1" aria-label="Remove one adult">−</button>
-                                        <span class="booking-guest-count" data-guest-count>4</span>
+                                        <span class="booking-guest-count" data-guest-count><%= Number(selectedBooking.adults) || 4 %></span>
                                         <button type="button" data-guest-change="1" aria-label="Add one adult">+</button>
                                     </span>
                                 </div>
@@ -730,7 +869,7 @@
                                     <span class="booking-guest-type">Children</span>
                                     <span class="booking-guest-control">
                                         <button type="button" data-guest-change="-1" aria-label="Remove one child">−</button>
-                                        <span class="booking-guest-count" data-guest-count>0</span>
+                                        <span class="booking-guest-count" data-guest-count><%= Number(selectedBooking.children) || 0 %></span>
                                         <button type="button" data-guest-change="1" aria-label="Add one child">+</button>
                                     </span>
                                 </div>
@@ -738,18 +877,18 @@
                                     <span class="booking-guest-type">Pets</span>
                                     <span class="booking-guest-control">
                                         <button type="button" data-guest-change="-1" aria-label="Remove one pet">−</button>
-                                        <span class="booking-guest-count" data-guest-count>0</span>
+                                        <span class="booking-guest-count" data-guest-count><%= Number(selectedBooking.pets) || 0 %></span>
                                         <button type="button" data-guest-change="1" aria-label="Add one pet">+</button>
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        <input type="hidden" name="adults" value="4" data-guest-value="adults">
-                        <input type="hidden" name="children" value="0" data-guest-value="children">
-                        <input type="hidden" name="pets" value="0" data-guest-value="pets">
+                        <input type="hidden" name="adults" value="<%= Number(selectedBooking.adults) || 4 %>" data-guest-value="adults">
+                        <input type="hidden" name="children" value="<%= Number(selectedBooking.children) || 0 %>" data-guest-value="children">
+                        <input type="hidden" name="pets" value="<%= Number(selectedBooking.pets) || 0 %>" data-guest-value="pets">
 
-                        <button class="booking-submit" type="submit">Book Now!</button>
+                        <button class="booking-submit" type="submit">Check Availability</button>
                     </form>
                 </aside>
             </div>
@@ -1699,6 +1838,7 @@
 </div>
 
 <script src="/js/listing-booking.js"></script>
+<script src="/js/listing-availability.js"></script>
 
 <script>
     (() => {
@@ -1716,6 +1856,10 @@
             document.getElementById("booking-check-out");
         const priceSummaries =
             document.querySelectorAll("[data-nightly-price]");
+        const availabilityMessage =
+            document.getElementById("booking-availability-message");
+        const bookingCalendars =
+            Array.from(document.querySelectorAll("[data-calendar-for]"));
 
         if (
             !bookingForm ||
@@ -1727,6 +1871,52 @@
             !priceSummaries.length
         ) {
             return;
+        }
+
+        function isValidDateValue(value) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) {
+                return false;
+            }
+
+            const [year, month, day] = value.split("-").map(Number);
+            const date = new Date(year, month - 1, day);
+            return (
+                date.getFullYear() === year &&
+                date.getMonth() === month - 1 &&
+                date.getDate() === day
+            );
+        }
+
+        let unavailableRanges = [];
+        let availabilityDataReady = true;
+
+        try {
+            const parsedRanges =
+                JSON.parse(bookingForm.dataset.unavailableDateRanges || "[]");
+
+            if (
+                !Array.isArray(parsedRanges) ||
+                parsedRanges.some((range) =>
+                    !range ||
+                    !isValidDateValue(range.from) ||
+                    !isValidDateValue(range.to) ||
+                    range.from > range.to
+                )
+            ) {
+                throw new Error("Unavailable date ranges have an invalid format.");
+            }
+
+            unavailableRanges = parsedRanges;
+        } catch (error) {
+            availabilityDataReady = false;
+            console.error("Could not load listing availability dates.", error);
+            if (availabilityMessage) {
+                availabilityMessage.hidden = false;
+                availabilityMessage.textContent =
+                    "Unavailable dates could not be loaded. Please refresh and try again.";
+            }
+            checkInInput.disabled = true;
+            checkOutInput.disabled = true;
         }
 
         const nightlyPrice =
@@ -1782,8 +1972,350 @@
             stickyBar.setAttribute("aria-hidden", String(!shouldShow));
         }
 
+        function formatLocalDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        function isUnavailableDate(dateValue) {
+            return unavailableRanges.some((range) =>
+                range.from <= dateValue && dateValue <= range.to
+            );
+        }
+
+        function hasUnavailableOverlap(checkIn, checkOut) {
+            return unavailableRanges.some((range) =>
+                checkIn <= range.to && checkOut > range.from
+            );
+        }
+
+        function getMinimumDate(field) {
+            if (field === "checkIn") {
+                return formatLocalDate(new Date());
+            }
+
+            if (!isValidDateValue(checkInInput.value)) {
+                return "";
+            }
+
+            const [year, month, day] = checkInInput.value.split("-").map(Number);
+            return formatLocalDate(new Date(year, month - 1, day + 1));
+        }
+
+        let activeCalendar = null;
+        let suppressFocusOpen = false;
+
+        function renderCalendar(calendar) {
+            const field = calendar.dataset.calendarFor;
+            const input = field === "checkIn" ? checkInInput : checkOutInput;
+            const monthLabel = calendar.querySelector("[data-calendar-month-label]");
+            const daysContainer = calendar.querySelector("[data-calendar-days]");
+            const monthValue = calendar.dataset.month;
+            const [year, month] = monthValue.split("-").map(Number);
+            const monthDate = new Date(year, month - 1, 1);
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const firstWeekday = monthDate.getDay();
+            const minimumDate = getMinimumDate(field);
+
+            monthLabel.textContent = new Intl.DateTimeFormat("en", {
+                month: "long",
+                year: "numeric"
+            }).format(monthDate);
+            daysContainer.replaceChildren();
+
+            for (let index = 0; index < firstWeekday; index += 1) {
+                const emptyDay = document.createElement("span");
+                emptyDay.className =
+                    "booking-calendar-day is-outside-month";
+                emptyDay.setAttribute("aria-hidden", "true");
+                daysContainer.append(emptyDay);
+            }
+
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                const dateValue =
+                    `${monthValue}-${String(day).padStart(2, "0")}`;
+                const isUnavailable = isUnavailableDate(dateValue);
+                const isBeforeMinimum =
+                    !minimumDate || dateValue < minimumDate;
+                const overlapsUnavailableRange =
+                    field === "checkOut" &&
+                    isValidDateValue(checkInInput.value) &&
+                    hasUnavailableOverlap(checkInInput.value, dateValue);
+                const dateButton = document.createElement("button");
+                dateButton.className = "booking-calendar-day";
+                dateButton.type = "button";
+                dateButton.textContent = String(day);
+                dateButton.dataset.date = dateValue;
+                dateButton.disabled =
+                    !availabilityDataReady ||
+                    isUnavailable ||
+                    isBeforeMinimum ||
+                    overlapsUnavailableRange ||
+                    (field === "checkOut" &&
+                        dateValue <= checkInInput.value);
+                dateButton.setAttribute(
+                    "aria-label",
+                    `${new Intl.DateTimeFormat("en", {
+                        dateStyle: "full"
+                    }).format(new Date(year, month - 1, day))}` +
+                    (isUnavailable ? ", unavailable" : "")
+                );
+
+                if (isUnavailable) {
+                    dateButton.classList.add("is-unavailable");
+                }
+                if (input.value === dateValue) {
+                    dateButton.classList.add("is-selected");
+                    dateButton.setAttribute("aria-pressed", "true");
+                } else {
+                    dateButton.setAttribute("aria-pressed", "false");
+                }
+                daysContainer.append(dateButton);
+            }
+
+            const totalCells = firstWeekday + daysInMonth;
+            for (let index = totalCells; index < 42; index += 1) {
+                const emptyDay = document.createElement("span");
+                emptyDay.className =
+                    "booking-calendar-day is-outside-month";
+                emptyDay.setAttribute("aria-hidden", "true");
+                daysContainer.append(emptyDay);
+            }
+
+            const previousMonthButton =
+                calendar.querySelector('[data-calendar-month-change="-1"]');
+            const previousMonth = new Date(year, month - 2, 1);
+            previousMonthButton.disabled =
+                formatLocalDate(previousMonth).slice(0, 7) <
+                minimumDate.slice(0, 7);
+        }
+
+        function openCalendar(field) {
+            if (!availabilityDataReady) {
+                return;
+            }
+            if (field === "checkOut" && !isValidDateValue(checkInInput.value)) {
+                if (availabilityMessage) {
+                    availabilityMessage.hidden = false;
+                    availabilityMessage.textContent =
+                        "Choose a check-in date before selecting checkout.";
+                }
+                checkInInput.focus();
+                return;
+            }
+
+            checkInInput.setAttribute(
+                "aria-expanded",
+                String(field === "checkIn")
+            );
+            checkOutInput.setAttribute(
+                "aria-expanded",
+                String(field === "checkOut")
+            );
+            bookingCalendars.forEach((calendar) => {
+                const isActive = calendar.dataset.calendarFor === field;
+                calendar.hidden = !isActive;
+                const input =
+                    field === "checkIn" ? checkInInput : checkOutInput;
+                if (isActive) {
+                    const value = input.value || getMinimumDate(field);
+                    const [year, month] = value.split("-").map(Number);
+                    calendar.dataset.month =
+                        `${year}-${String(month).padStart(2, "0")}`;
+                    renderCalendar(calendar);
+                    activeCalendar = calendar;
+                }
+            });
+        }
+
+        function closeCalendar(restoreFocus) {
+            if (!activeCalendar) {
+                return;
+            }
+
+            const field = activeCalendar.dataset.calendarFor;
+            activeCalendar.hidden = true;
+            activeCalendar = null;
+            const input =
+                field === "checkIn" ? checkInInput : checkOutInput;
+            input.setAttribute("aria-expanded", "false");
+            if (restoreFocus && document.activeElement !== input) {
+                suppressFocusOpen = true;
+                input.focus();
+            }
+        }
+
+        bookingCalendars.forEach((calendar) => {
+            const field = calendar.dataset.calendarFor;
+            const input =
+                field === "checkIn" ? checkInInput : checkOutInput;
+
+            calendar.querySelectorAll("[data-calendar-month-change]").forEach(
+                (button) => {
+                    button.addEventListener("click", function () {
+                        const [year, month] =
+                            calendar.dataset.month.split("-").map(Number);
+                        const nextMonth = new Date(
+                            year,
+                            month - 1 + Number(button.dataset.calendarMonthChange),
+                            1
+                        );
+                        calendar.dataset.month =
+                            `${nextMonth.getFullYear()}-${String(
+                                nextMonth.getMonth() + 1
+                            ).padStart(2, "0")}`;
+                        renderCalendar(calendar);
+                    });
+                }
+            );
+
+            calendar.querySelector("[data-calendar-days]").addEventListener(
+                "click",
+                function (event) {
+                    const dateButton =
+                        event.target.closest("[data-date]");
+                    if (!dateButton || dateButton.disabled) {
+                        return;
+                    }
+
+                    input.value = dateButton.dataset.date;
+                    input.dispatchEvent(
+                        new Event("change", { bubbles: true })
+                    );
+                    closeCalendar(true);
+
+                    if (availabilityMessage) {
+                        availabilityMessage.hidden = true;
+                        availabilityMessage.textContent = "";
+                    }
+                }
+            );
+
+            input.addEventListener("focus", function () {
+                if (suppressFocusOpen) {
+                    suppressFocusOpen = false;
+                    return;
+                }
+                openCalendar(field);
+            });
+            input.addEventListener("click", function () {
+                openCalendar(field);
+            });
+            input.addEventListener("keydown", function (event) {
+                if (
+                    event.key === "Enter" ||
+                    event.key === " " ||
+                    event.key === "ArrowDown"
+                ) {
+                    event.preventDefault();
+                    openCalendar(field);
+                }
+            });
+        });
+
+        document.addEventListener("click", function (event) {
+            if (
+                activeCalendar &&
+                !activeCalendar.contains(event.target) &&
+                event.target !== checkInInput &&
+                event.target !== checkOutInput
+            ) {
+                closeCalendar(false);
+            }
+        });
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && activeCalendar) {
+                closeCalendar(true);
+            }
+        });
+
         checkInInput.addEventListener("change", updatePriceSummaries);
         checkOutInput.addEventListener("change", updatePriceSummaries);
+        let availabilityCheckInProgress = false;
+        bookingForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            if (
+                !availabilityDataReady
+            ) {
+                return;
+            }
+
+            if (
+                !isValidDateValue(checkInInput.value) ||
+                !isValidDateValue(checkOutInput.value)
+            ) {
+                if (availabilityMessage) {
+                    availabilityMessage.hidden = false;
+                    availabilityMessage.textContent =
+                        !checkInInput.value
+                            ? "Choose a check-in date first."
+                            : "Choose both a valid check-in and checkout date.";
+                }
+                return;
+            }
+
+            if (checkOutInput.value <= checkInInput.value) {
+                if (availabilityMessage) {
+                    availabilityMessage.hidden = false;
+                    availabilityMessage.textContent =
+                        "Checkout must be later than check-in.";
+                }
+                return;
+            }
+
+            if (availabilityCheckInProgress) {
+                return;
+            }
+
+            availabilityCheckInProgress = true;
+            if (availabilityMessage) {
+                availabilityMessage.hidden = false;
+                availabilityMessage.textContent = "Checking availability…";
+            }
+
+            try {
+                const availabilityUrl =
+                    new URL(bookingForm.action, window.location.origin);
+                availabilityUrl.pathname =
+                    availabilityUrl.pathname.replace(/\/booking$/, "/availability");
+                availabilityUrl.searchParams.set("checkIn", checkInInput.value);
+                availabilityUrl.searchParams.set("checkOut", checkOutInput.value);
+
+                const response =
+                    await fetch(availabilityUrl, {
+                        headers: { Accept: "application/json" },
+                        credentials: "same-origin"
+                    });
+                const result = await response.json();
+
+                if (!response.ok || !result.available) {
+                    if (availabilityMessage) {
+                        availabilityMessage.textContent =
+                            result.message ||
+                            "We couldn't check availability right now. Please try again.";
+                    }
+                    availabilityCheckInProgress = false;
+                    return;
+                }
+
+                const bookingUrl =
+                    new URL(bookingForm.action, window.location.origin);
+                bookingUrl.search =
+                    new URLSearchParams(new FormData(bookingForm)).toString();
+                window.location.assign(bookingUrl.toString());
+            } catch (error) {
+                console.error("Could not check listing availability.", error);
+                if (availabilityMessage) {
+                    availabilityMessage.hidden = false;
+                    availabilityMessage.textContent =
+                        "We couldn't check availability right now. Please try again.";
+                }
+                availabilityCheckInProgress = false;
+            }
+        });
         stickyBookNow.addEventListener("click", function () {
             bookingForm.requestSubmit();
         });

@@ -219,6 +219,35 @@ class ExpressError extends Error {
 
 }
 
+const unavailableBookingMessage =
+    "Oops! This property is not available for those days. Can you choose different dates?";
+
+function isValidDateOnly(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false;
+    }
+
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    return (
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day
+    );
+}
+
+function hasUnavailableDateOverlap(listing, checkIn, checkOut) {
+    return (listing.unavailableDateRanges || []).some(range =>
+        range &&
+        isValidDateOnly(range.from) &&
+        isValidDateOnly(range.to) &&
+        range.from <= range.to &&
+        checkIn <= range.to &&
+        checkOut > range.from
+    );
+}
+
 
 // ========================================
 // CONVERT LOCATION TO COORDINATES
@@ -591,6 +620,68 @@ router.delete(
 // ========================================
 
 router.get(
+    "/:id/availability",
+
+    wrapAsync(
+        async (
+            req,
+            res
+        ) => {
+            const { id } = req.params;
+            const checkIn =
+                typeof req.query.checkIn === "string" ? req.query.checkIn : "";
+            const checkOut =
+                typeof req.query.checkOut === "string" ? req.query.checkOut : "";
+
+            if (!/^[a-f\d]{24}$/i.test(id)) {
+                return res.status(404).json({
+                    success: false,
+                    available: false,
+                    message: "Listing not found."
+                });
+            }
+
+            if (
+                !isValidDateOnly(checkIn) ||
+                !isValidDateOnly(checkOut) ||
+                checkIn >= checkOut
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    available: false,
+                    message: "Please select valid check-in and checkout dates."
+                });
+            }
+
+            const listing =
+                await Listing.findById(id).select("unavailableDateRanges");
+
+            if (!listing) {
+                return res.status(404).json({
+                    success: false,
+                    available: false,
+                    message: "Listing not found."
+                });
+            }
+
+            if (hasUnavailableDateOverlap(listing, checkIn, checkOut)) {
+                return res.json({
+                    success: true,
+                    available: false,
+                    message: unavailableBookingMessage
+                });
+            }
+
+            return res.json({
+                success: true,
+                available: true,
+                message: ""
+            });
+        }
+    )
+);
+
+router.get(
     "/:id/booking",
 
     wrapAsync(
@@ -617,20 +708,7 @@ router.get(
             }
 
             function isValidBookingDate(value) {
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-                    return false;
-                }
-
-                const [year, month, day] =
-                    value.split("-").map(Number);
-                const date =
-                    new Date(Date.UTC(year, month - 1, day));
-
-                return (
-                    date.getUTCFullYear() === year &&
-                    date.getUTCMonth() === month - 1 &&
-                    date.getUTCDate() === day
-                );
+                return isValidDateOnly(value);
             }
 
             function parseGuestCount(name) {
@@ -753,6 +831,24 @@ router.get(
                 throw new ExpressError(
                     404,
                     "Listing Not Found"
+                );
+            }
+
+            if (hasUnavailableDateOverlap(listing, checkIn, checkOut)) {
+                const unavailableUrl =
+                    new URL(`/listings/${id}`, "http://localhost");
+                unavailableUrl.searchParams.set(
+                    "availabilityError",
+                    "unavailable"
+                );
+                unavailableUrl.searchParams.set("checkIn", checkIn);
+                unavailableUrl.searchParams.set("checkOut", checkOut);
+                unavailableUrl.searchParams.set("adults", String(adults));
+                unavailableUrl.searchParams.set("children", String(children));
+                unavailableUrl.searchParams.set("pets", String(pets));
+
+                return res.redirect(
+                    unavailableUrl.pathname + unavailableUrl.search
                 );
             }
 
@@ -1159,6 +1255,40 @@ router.get(
                 {
 
                     listing,
+
+                    unavailableDateRanges:
+                        (listing.unavailableDateRanges || []).map(range => ({
+                            from: range.from,
+                            to: range.to
+                        })),
+
+                    availabilityError:
+                        req.query.availabilityError === "unavailable"
+                            ? unavailableBookingMessage
+                            : "",
+
+                    bookingSelection: {
+                        checkIn:
+                            typeof req.query.checkIn === "string"
+                                ? req.query.checkIn
+                                : "",
+                        checkOut:
+                            typeof req.query.checkOut === "string"
+                                ? req.query.checkOut
+                                : "",
+                        adults:
+                            typeof req.query.adults === "string"
+                                ? req.query.adults
+                                : "4",
+                        children:
+                            typeof req.query.children === "string"
+                                ? req.query.children
+                                : "0",
+                        pets:
+                            typeof req.query.pets === "string"
+                                ? req.query.pets
+                                : "0"
+                    },
 
                     reviews,
 

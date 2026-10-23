@@ -418,16 +418,19 @@
         const requestedCheckInIsValid =
             isValidDate(requestedCheckIn) && requestedCheckIn >= today;
         const initialCheckIn =
-            requestedCheckInIsValid ? requestedCheckIn : today;
+            requestedCheckInIsValid ? requestedCheckIn : "";
+        const initialCheckOutIsValid =
+            Boolean(initialCheckIn) &&
+            isValidDate(requestedCheckOut) &&
+            requestedCheckOut > initialCheckIn;
 
         checkInInput.min = today;
         checkInInput.value = initialCheckIn;
-        checkOutInput.min = getNextLocalDate(initialCheckIn);
+        checkOutInput.min =
+            initialCheckIn ? getNextLocalDate(initialCheckIn) : "";
         checkOutInput.value =
-            isValidDate(requestedCheckOut) &&
-                requestedCheckOut > initialCheckIn
-                ? requestedCheckOut
-                : checkOutInput.min;
+            initialCheckOutIsValid ? requestedCheckOut : "";
+        checkOutInput.disabled = !initialCheckIn;
 
         function updatePriceSummary() {
             if (!priceSummaries.length) {
@@ -501,14 +504,17 @@
 
         checkInInput.addEventListener("change", function () {
             if (!checkInInput.value || !isValidDate(checkInInput.value)) {
+                checkOutInput.value = "";
+                checkOutInput.min = "";
+                checkOutInput.disabled = true;
                 checkOutInput.setCustomValidity("");
+                updatePriceSummary();
                 return;
             }
 
             checkOutInput.min = getNextLocalDate(checkInInput.value);
-            if (!checkOutInput.value || checkOutInput.value <= checkInInput.value) {
-                checkOutInput.value = checkOutInput.min;
-            }
+            checkOutInput.value = "";
+            checkOutInput.disabled = false;
             checkInInput.setCustomValidity("");
             checkOutInput.setCustomValidity("");
             updatePriceSummary();
